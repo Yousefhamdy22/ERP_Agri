@@ -1,0 +1,184 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      [title]="editingId ? 'تعديل قيد يومية' : 'اضافة قيد يومية'"
+      icon="fa-solid fa-book">
+    </app-page-header>
+
+    <div *ngIf="loadingDraft" class="bg-white border border-line rounded-[13px] p-12 text-center text-muted shadow-sm">
+      <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+      جارٍ تحميل القيد…
+    </div>
+
+    <form *ngIf="!loadingDraft" [formGroup]="headerForm" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm mb-[18px]">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-[20px] gap-y-[18px]">
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ القيد <span class="text-danger">*</span></label>
+          <input type="date" formControlName="entryDate"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('entryDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الفرع <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="branchId"
+          [options]="[{value: '', label: '— اختر الفرع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="— اختر الفرع —"
+          [searchable]="true"
+          />
+          <div *ngIf="editingId" class="text-[11px] text-muted mt-[4px]">لا يمكن تغيير الفرع بعد إنشاء القيد</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الفترة المالية <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="fiscalPeriodId"
+          [options]="[{value: '', label: '— اختر الفترة المالية —'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode + ' (' + p.startDate + ' — ' + p.endDate + ')'})))"
+          placeholder="— اختر الفترة المالية —"
+          />
+          <div *ngIf="!fiscalPeriods.length && !editingId" class="text-[11px] text-muted mt-[4px]">لا توجد فترات مالية مفتوحة</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">العملة <span class="text-danger">*</span></label>
+          <app-select formControlName="currency" [options]="currencies.map(c => ({value: c, label: c}))" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">سعر الصرف <span class="text-danger">*</span></label>
+          <input type="number" step="0.0001" min="0.0001" formControlName="exchangeRate"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+            [ngClass]="invalid('exchangeRate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+        </div>
+
+        <div class="group md:col-span-2 lg:col-span-3">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            البيان <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <textarea formControlName="description" rows="2" placeholder="وصف مختصر لسبب القيد…"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary resize-none transition"></textarea>
+        </div>
+      </div>
+    </form>
+
+    <!-- Lines editor -->
+    <div *ngIf="!loadingDraft" class="bg-white border border-line rounded-[13px] p-[22px] shadow-sm mb-[18px]">
+      <div class="flex items-center justify-between mb-[14px]">
+        <div class="text-[14px] font-bold">سطور القيد</div>
+        <div class="flex gap-[8px]">
+          <button (click)="addLine('Debit')"
+            class="px-3 py-[8px] rounded-[8px] border border-[#dce6fb] bg-[#eef1fd] text-[#5156be] text-[12.5px] font-semibold hover:bg-[#dce6fb] transition cursor-pointer">
+            <i class="fa-solid fa-plus"></i> سطر مدين
+          </button>
+          <button (click)="addLine('Credit')"
+            class="px-3 py-[8px] rounded-[8px] border border-[#d7f0e3] bg-[#eaf7f1] text-[#0e9f6e] text-[12.5px] font-semibold hover:bg-[#d7f0e3] transition cursor-pointer">
+            <i class="fa-solid fa-plus"></i> سطر دائن
+          </button>
+        </div>
+      </div>
+
+      <div class="border border-[#e3e6ea] rounded-[10px] overflow-visible">
+        <table class="w-full text-[12.5px] table-fixed">
+          <colgroup>
+            <col class="w-[5%]" />
+            <col class="w-[25%]" />
+            <col class="w-[12%]" />
+            <col class="w-[15%]" />
+            <col class="w-[22%]" />
+            <col class="w-[12%]" />
+            <col class="w-[5%]" />
+          </colgroup>
+          <thead>
+            <tr class="bg-[#f6f7f9] text-[11.5px] text-[#5b626d]">
+              <th class="px-2 py-[9px] text-center font-semibold">#</th>
+              <th class="px-2 py-[9px] text-right font-semibold">الحساب</th>
+              <th class="px-2 py-[9px] text-center font-semibold">مدين/دائن</th>
+              <th class="px-2 py-[9px] text-right font-semibold">الطرف</th>
+              <th class="px-2 py-[9px] text-right font-semibold">البيان</th>
+              <th class="px-2 py-[9px] text-center font-semibold">المبلغ</th>
+              <th class="px-2 py-[9px]"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let line of lines; let i = index" class="border-t border-[#f1f2f4]">
+              <td class="px-2 py-[8px] text-center text-muted">{{ i + 1 }}</td>
+              <td class="px-2 py-[8px]">
+                <app-tree-select [(ngModel)]="line.accountId" [options]="accountOptions" placeholder="— اختر الحساب —"></app-tree-select>
+              </td>
+              <td class="px-2 py-[8px]">
+                <app-select
+          [(ngModel)]="line.side"
+          [options]="[{value: 'Debit', label: 'مدين'}, {value: 'Credit', label: 'دائن'}]"
+          />
+              </td>
+              <td class="px-2 py-[8px]">
+                <app-select
+          [(ngModel)]="line.partyId"
+          [options]="[{value: '', label: '— بدون طرف —'}].concat(parties.map(p => ({value: p.id, label: p.name})))"
+          placeholder="— بدون طرف —"
+          />
+              </td>
+              <td class="px-2 py-[8px]">
+                <input [(ngModel)]="line.description" placeholder="اختياري — يُستخدم بيان القيد إن تُرك فارغاً"
+                  class="w-full px-2 py-[7px] border border-[#e3e6ea] rounded-[7px] text-[12.5px] outline-none focus:border-primary transition" />
+              </td>
+              <td class="px-2 py-[8px]">
+                <input type="number" step="0.01" min="0.01" [(ngModel)]="line.amount"
+                  class="w-full px-2 py-[7px] border border-[#e3e6ea] rounded-[7px] text-[12.5px] font-mono text-center outline-none focus:border-primary transition" />
+              </td>
+              <td class="px-2 py-[8px] text-center">
+                <button (click)="removeLine(i)" [disabled]="lines.length <= 2"
+                  class="text-[#a3a8b2] hover:text-danger bg-transparent border-0 cursor-pointer text-[14px] disabled:opacity-30 disabled:cursor-not-allowed">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="!lines.length">
+              <td colspan="7" class="px-2 py-[20px] text-center text-muted">لا توجد سطور بعد — أضف سطر مدين وسطر دائن على الأقل</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Live balance validation -->
+      <div class="mt-[16px] grid grid-cols-1 sm:grid-cols-3 gap-[10px]">
+        <div class="bg-[#eef1fd] rounded-[9px] p-[12px] text-center">
+          <div class="text-[16px] font-bold text-[#5156be] font-mono">{{ totalDebit | number:'1.2-2' }}</div>
+          <div class="text-[11px] text-muted mt-[2px]">إجمالي المدين</div>
+        </div>
+        <div class="bg-[#eaf7f1] rounded-[9px] p-[12px] text-center">
+          <div class="text-[16px] font-bold text-[#0e9f6e] font-mono">{{ totalCredit | number:'1.2-2' }}</div>
+          <div class="text-[11px] text-muted mt-[2px]">إجمالي الدائن</div>
+        </div>
+        <div class="rounded-[9px] p-[12px] text-center" [ngClass]="isBalanced ? 'bg-[#eaf7f1]' : 'bg-[#fdeaea]'">
+          <div class="text-[16px] font-bold font-mono" [ngClass]="isBalanced ? 'text-[#0e9f6e]' : 'text-danger'">{{ difference | number:'1.2-2' }}</div>
+          <div class="text-[11px] mt-[2px]" [ngClass]="isBalanced ? 'text-muted' : 'text-danger'">
+            {{ isBalanced ? 'القيد متوازن' : 'الفرق — يجب أن يساوي صفر' }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="!loadingDraft" class="flex flex-wrap items-center gap-[10px]">
+      <app-button variant="primary" icon="fa-solid fa-floppy-disk" (click)="submit()" [disabled]="saving || !canSave">
+        {{ saving ? 'جارٍ الحفظ…' : (editingId ? 'حفظ التعديلات' : 'حفظ كمسودة') }}
+      </app-button>
+      <app-button variant="ghost" routerLink="/manual-journal">إلغاء</app-button>
+      <span *ngIf="!saving && saveBlockedReason" class="text-[12px] text-danger">
+        <i class="fa-solid fa-circle-info"></i> {{ saveBlockedReason }}
+      </span>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

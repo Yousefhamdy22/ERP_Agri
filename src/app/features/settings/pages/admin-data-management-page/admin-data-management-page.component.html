@@ -1,0 +1,264 @@
+<app-page-header [breadcrumbs]="breadcrumbs" title="إدارة البيانات" icon="fa-solid fa-database" subtitle="حذف وتهيئة سجلات النظام بشكل ناعم مع كافة تبعياتها تلقائياً"></app-page-header>
+
+<div class="mt-6 flex flex-col gap-6">
+
+  <!-- warning top banner -->
+  <div class="bg-[#fef9c3] border border-[#fef08a] rounded-[13px] p-4 flex items-start gap-3 text-[#854d0e]">
+    <span class="text-xl shrink-0 mt-0.5"><i class="fa-solid fa-triangle-exclamation"></i></span>
+    <div>
+      <div class="font-bold text-[14px] leading-tight mb-1">تحذير أمني هام جداً (Warning: Safe Soft Delete Operations)</div>
+      <div class="text-[12.5px] leading-relaxed opacity-95">
+        إجراءات الحذف في هذه الصفحة نهائية وتتسبب في إزالة السجل المختار وجميع السجلات والقيود والعمليات وحركات المخزون التابعة له تلقائياً (Cascading Soft Delete). يرجى مراجعة وتأكيد البيانات بدقة قبل الاعتماد.
+      </div>
+    </div>
+  </div>
+
+  <!-- Success result display -->
+  <div *ngIf="showResultCard && deleteResult" class="bg-[#f0fdf4] border border-[#bbf7d0] rounded-[13px] p-5 text-[#166534] animate-pop shadow-sm">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-10 h-10 rounded-full bg-[#dcfce7] flex items-center justify-center text-lg text-[#16a34a]">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div>
+        <div class="font-bold text-[15px] leading-tight">تمت عملية الحذف بنجاح</div>
+        <div class="text-[12.5px] opacity-90">تم إزالة الكيانات المختارة وحساباتها التابعة بنجاح من قاعدة البيانات</div>
+      </div>
+      <button (click)="showResultCard = false" class="ms-auto w-8 h-8 rounded-full flex items-center justify-center hover:bg-[#dcfce7] transition text-[#166534]">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="bg-white border border-[#e2e8f0] rounded-[10px] p-4 text-ink">
+      <div class="text-[13px] font-bold text-[#334155] mb-3 flex items-center justify-between">
+        <span>إجمالي السجلات المحذوفة (بما في ذلك التبعيات):</span>
+        <span class="bg-[#dcfce7] text-[#15803d] px-3 py-1 rounded-full text-[13px] font-bold">{{ deleteResult.totalDeleted }}</span>
+      </div>
+
+      <!-- Detail accordion -->
+      <details class="group cursor-pointer">
+        <summary class="list-none flex items-center justify-between text-[12.5px] text-muted font-bold hover:text-ink">
+          <span>عرض السجلات التابعة المتأثرة بالعملية</span>
+          <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180"></i>
+        </summary>
+        <div class="mt-3 pt-3 border-t border-[#f1f5f9] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div *ngFor="let ent of deleteResult.deletedEntities" 
+               class="bg-[#f8fafc] border border-[#f1f5f9] rounded-[8px] px-3 py-2 flex items-center justify-between text-[13px]">
+            <span class="font-semibold text-[#475569]">{{ getArabicEntityName(ent.entityType) }}</span>
+            <span class="bg-[#f1f5f9] text-[#475569] px-2 py-0.5 rounded-[6px] text-[12px] font-bold">{{ ent.count }} سجل</span>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- Main section -->
+  <div class="bg-white border border-line rounded-[13px] p-6 shadow-sm">
+    <!-- Step 1 Selection -->
+    <div class="flex flex-col gap-2 max-w-md mb-6">
+      <label class="text-[13.5px] font-bold text-[#344054]">نوع البيانات / Entity Type:</label>
+      <div class="relative">
+        <app-select
+          [(ngModel)]="selectedEntityKey"
+          [options]="[{value: '', label: '-- اختر نوع البيانات لإدارتها... / Select Entity --'}].concat(entities.map(item => ({value: item.key, label: item.displayNameAr + ' - ' + item.displayName})))"
+          placeholder="-- اختر نوع البيانات لإدارتها... / Select Entity --"
+          (changed)="onEntityChange()"
+          />
+        <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#98a2b3]">
+          <i class="fa-solid fa-chevron-down text-[12px]"></i>
+        </div>
+      </div>
+      <div *ngIf="entitiesLoading" class="text-[12px] text-primary flex items-center gap-1.5 mt-1">
+        <i class="fa-solid fa-spinner animate-spin"></i> جاري تحميل القائمة...
+      </div>
+    </div>
+
+    <!-- Step 2 Records Table -->
+    <div *ngIf="selectedEntityKey">
+      <hr class="border-[#f1f5f9] my-6">
+
+      <!-- Table headers & search -->
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <div class="flex items-center gap-3 bg-[#f3f4f7] border border-line rounded-[10px] px-3 py-2.5 w-full md:w-80">
+          <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+          <input [ngModel]="searchTerm" (ngModelChange)="onSearchChange($event)" 
+                 placeholder="بحث عن سجل بالاسم أو الكود..." 
+                 class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+          <button *ngIf="searchTerm" (click)="clearSearch()" class="text-[#a3a8b2] hover:text-ink text-[12px]">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </div>
+
+        <button *ngIf="selectedRecordIds.size > 0" (click)="openBulkDelete()" 
+                class="flex items-center gap-2 px-4 py-2.5 bg-danger text-white rounded-[10px] font-bold text-[13px] hover:bg-danger-dark transition">
+          <i class="fa-solid fa-trash-can"></i>
+          <span>حذف السجلات المحددة ({{ selectedRecordIds.size }})</span>
+        </button>
+      </div>
+
+      <!-- Table element -->
+      <div class="overflow-x-auto border border-line rounded-[10px] relative">
+        <table class="w-full text-right border-collapse">
+          <thead>
+            <tr class="bg-[#fafbfc] border-b border-line text-[12px] font-bold text-muted uppercase">
+              <th class="p-4 w-12 text-center">
+                <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll()" 
+                       class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer">
+              </th>
+              <th *ngFor="let col of columns" class="p-4 text-[13px]">
+                <div>{{ col.labelAr }}</div>
+                <div class="text-[10px] font-normal text-muted">{{ col.label }}</div>
+              </th>
+              <th class="p-4 text-[13px] text-center w-24">العمليات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let record of records" class="border-b border-line hover:bg-primary-soft transition">
+              <td class="p-4 text-center">
+                <input type="checkbox" [checked]="selectedRecordIds.has(getRecordId(record))" (change)="toggleSelectRecord(getRecordId(record))" 
+                       class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer">
+              </td>
+              <td *ngFor="let col of columns" class="p-4 text-[13.5px] font-medium text-ink">
+                {{ getCellValue(record, col.key) }}
+              </td>
+              <td class="p-4 text-center">
+                <button (click)="openSingleDelete(record)" 
+                        class="px-3 py-1.5 bg-[#fdeaea] text-danger hover:bg-danger hover:text-white rounded-[8px] text-[12px] font-bold flex items-center justify-center gap-1.5 transition mx-auto cursor-pointer">
+                  <i class="fa-solid fa-trash"></i>
+                  <span>حذف</span>
+                </button>
+              </td>
+            </tr>
+
+            <!-- loading spinner -->
+            <tr *ngIf="loading">
+              <td [attr.colspan]="columns.length + 2" class="p-12 text-center text-primary text-[14px]">
+                <div class="flex flex-col items-center justify-center gap-3">
+                  <i class="fa-solid fa-spinner animate-spin text-2xl"></i>
+                  <span class="font-semibold">جاري تحميل السجلات من قاعدة البيانات...</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- empty state -->
+            <tr *ngIf="!loading && records.length === 0">
+              <td [attr.colspan]="columns.length + 2" class="p-12 text-center text-muted text-[13.5px]">
+                <div class="flex flex-col items-center justify-center gap-2">
+                  <i class="fa-solid fa-box-open text-3xl opacity-40"></i>
+                  <span class="font-bold">لا يوجد سجلات مطابقة للبحث أو الكيان فارغ حالياً</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paging -->
+      <div *ngIf="records.length > 0 && !loading" class="flex flex-wrap items-center justify-between gap-4 mt-4">
+        <div class="text-[12.5px] font-semibold text-muted">
+          عرض من {{ (page - 1) * pageSize + 1 }} إلى {{ rangeEnd }} من إجمالي {{ totalCount }} سجل
+        </div>
+
+        <div class="flex items-center gap-1">
+          <button (click)="prevPage()" [disabled]="!hasPreviousPage" 
+                  class="w-9 h-9 rounded-[8px] border border-line bg-white flex items-center justify-center text-[13px] hover:bg-[#f3f4f7] disabled:opacity-50 disabled:pointer-events-none transition cursor-pointer">
+            <i class="fa-solid fa-angle-right"></i>
+          </button>
+          <div class="px-3 text-[13px] font-bold text-ink">صفحة {{ page }} من {{ totalPages }}</div>
+          <button (click)="nextPage()" [disabled]="!hasNextPage" 
+                  class="w-9 h-9 rounded-[8px] border border-line bg-white flex items-center justify-center text-[13px] hover:bg-[#f3f4f7] disabled:opacity-50 disabled:pointer-events-none transition cursor-pointer">
+            <i class="fa-solid fa-angle-left"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Delete Confirmation Dialog Modal -->
+<div *ngIf="deletingRecord || isBulkDelete" 
+     class="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-50 flex items-center justify-center p-4 animate-fade">
+  
+  <div class="bg-white rounded-[16px] shadow-lg border border-line max-w-lg w-full overflow-hidden animate-pop">
+    
+    <!-- Modal header -->
+    <div class="bg-[#fef2f2] border-b border-[#fee2e2] px-6 py-4 flex items-center gap-3">
+      <span class="text-danger text-2xl"><i class="fa-solid fa-triangle-exclamation"></i></span>
+      <div>
+        <h3 class="text-[15.5px] font-bold text-[#991b1b]">تأكيد الحذف النهائي - Confirm Delete</h3>
+        <p class="text-[11px] text-[#b91c1c]">خطوة أمنية لمنع الحذف العرضي</p>
+      </div>
+      <button (click)="closeDeleteModal()" class="ms-auto w-8 h-8 rounded-full flex items-center justify-center hover:bg-[#fee2e2] transition text-[#991b1b]">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Modal content -->
+    <div class="p-6">
+      
+      <!-- Single delete info -->
+      <div *ngIf="!isBulkDelete">
+        <p class="text-[13.5px] text-ink mb-4">
+          هل أنت متأكد من رغبتك في حذف السجل التالي نهائياً؟
+        </p>
+        <div class="bg-[#fafbfc] border border-line rounded-[10px] p-3 mb-5">
+          <div class="text-[11px] text-muted mb-1">البيان / المعرّف:</div>
+          <div class="text-[14px] font-bold text-danger">{{ getRecordIdentifier(deletingRecord) }}</div>
+        </div>
+      </div>
+
+      <!-- Bulk delete info -->
+      <div *ngIf="isBulkDelete">
+        <p class="text-[13.5px] text-ink mb-4">
+          هل أنت متأكد من رغبتك في حذف <strong class="text-danger text-[14.5px]">{{ selectedRecordIds.size }} سجلات</strong> دفعة واحدة؟
+        </p>
+      </div>
+
+      <!-- Dependencies preview box -->
+      <div class="bg-[#fffbeb] border border-[#fef08a] rounded-[10px] p-4 text-[#854d0e] text-[13px] mb-5">
+        <div class="font-bold flex items-center gap-1.5 mb-2 text-[#b45309]">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span>سيتم حذف هذا السجل وجميع السجلات والملحقات التابعة التالية:</span>
+        </div>
+        
+        <div *ngIf="dependencyPreviews[selectedEntityKey]" class="font-bold text-[13.5px] leading-relaxed text-danger bg-[#fdeaea] px-3 py-2 rounded-[8px] border border-[#f3d4d4]">
+          {{ dependencyPreviews[selectedEntityKey] }}
+        </div>
+        <div *ngIf="!dependencyPreviews[selectedEntityKey]" class="opacity-90 leading-relaxed">
+          جميع السجلات المحاسبية والقيود وعلاقات الكيانات التابعة لهذا السجل تلقائياً.
+        </div>
+      </div>
+
+      <!-- Input confirmation text -->
+      <div class="flex flex-col gap-2">
+        <label class="text-[13px] font-semibold text-muted">
+          <span *ngIf="!isBulkDelete">لتأكيد الحذف، يرجى كتابة معرّف السجل الموضح أعلاه بدقة:</span>
+          <span *ngIf="isBulkDelete">لتأكيد الحذف المتعدد، يرجى كتابة عبارة <strong>"{{ getBulkConfirmText() }}"</strong> أدناه:</span>
+        </label>
+        
+        <div class="relative">
+          <input [(ngModel)]="confirmInputText" type="text"
+                 placeholder="اكتب القيمة المطلوبة هنا للتأكيد..." 
+                 class="w-full bg-[#fafbfc] border border-line rounded-[10px] px-4 py-3 text-[13.5px] font-bold text-center outline-none focus:border-danger placeholder-gray-400" />
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Modal actions -->
+    <div class="bg-[#fafbfc] border-t border-line px-6 py-4 flex items-center justify-end gap-3">
+      <button (click)="closeDeleteModal()" [disabled]="deleteLoading"
+              class="px-5 py-2.5 bg-white border border-line text-muted rounded-[10px] text-[13px] font-bold hover:bg-[#f3f4f7] disabled:opacity-50 transition cursor-pointer">
+        إلغاء / Cancel
+      </button>
+      
+      <button (click)="confirmDelete()" [disabled]="isConfirmDisabled()"
+              class="px-5 py-2.5 bg-danger text-white rounded-[10px] text-[13px] font-bold hover:bg-danger-dark disabled:opacity-40 disabled:pointer-events-none transition flex items-center gap-1.5 cursor-pointer">
+        <i *ngIf="deleteLoading" class="fa-solid fa-spinner animate-spin"></i>
+        <span>حذف نهائي / Confirm Delete</span>
+      </button>
+    </div>
+
+  </div>
+
+</div>

@@ -1,0 +1,132 @@
+.filter-panel {
+  background: #fff;
+  border: 1px solid #e3e6ea;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 16px;
+  align-items: end;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+  }
+
+  select,
+  input[type='date'],
+  input[type='number'],
+  input[type='text'] {
+    height: 38px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    padding: 0 10px;
+    font-size: 13px;
+    color: #1e293b;
+    background: #fafbfc;
+    transition: border-color 0.15s;
+    width: 100%;
+
+    &:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &--checkbox {
+    justify-content: center;
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #334155;
+      user-select: none;
+
+      input[type='checkbox'] {
+        width: 16px;
+        height: 16px;
+        accent-color: #3b82f6;
+      }
+    }
+  }
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 14px;
+  gap: 10px;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 7px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) {
+    background: #2563eb;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-preview-pdf {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  border: 1px solid #fed7aa;
+  border-radius: 7px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  i {
+    color: #ea580c;
+  }
+
+  &:hover:not(:disabled) {
+    background: #ffedd5;
+    border-color: #fdba74;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

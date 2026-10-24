@@ -1,0 +1,318 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="ادارة الأصناف"
+      icon="fa-solid fa-boxes-stacked"
+      [subtitle]="'إجمالي: ' + totalCount + ' صنف'">
+    </app-page-header>
+
+    <!-- Filters -->
+    <div class="mb-[16px] flex flex-wrap gap-[10px] items-center">
+      <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[10px] w-full sm:w-72 shadow-sm">
+        <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+        <input [ngModel]="search" (ngModelChange)="onSearchChange($event)" placeholder="بحث بالاسم أو SKU أو الباركود…"
+          class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+        <button *ngIf="search" (click)="clearSearch()"
+          class="text-[#a3a8b2] hover:text-ink bg-transparent border-0 cursor-pointer text-[13px]">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <app-select
+          [(ngModel)]="categoryId"
+          [options]="[{value: '', label: 'كل الفئات'}].concat(flatCategories.map(c => ({value: c.categoryId, label: indent(c.level) + c.nameAr})))"
+          placeholder="كل الفئات"
+          (changed)="onFilterChange()"
+          [searchable]="true"
+          />
+
+      <app-select
+          [(ngModel)]="activeFilter"
+          [options]="[{value: 'all', label: 'كل الحالات'}, {value: 'active', label: 'نشط فقط'}, {value: 'inactive', label: 'غير نشط فقط'}]"
+          (changed)="onFilterChange()"
+          />
+
+      <!-- شريط الحذف الجماعي — يظهر فقط عند تحديد صنف واحد أو أكثر -->
+      <button *ngIf="selectedIds.size > 0" (click)="deleteSelected()" [disabled]="deleting"
+        class="px-3 py-[10px] rounded-[9px] border border-[#f3d4d4] bg-[#fdeaea] text-danger text-[13px] font-semibold hover:bg-[#f9d6d6] transition cursor-pointer disabled:opacity-50">
+        <i class="fa-solid fa-trash-can"></i> حذف المحدَّد ({{ selectedIds.size }})
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[13.5px] min-w-[880px]">
+        <thead>
+          <tr class="bg-primary text-white text-[12px]">
+            <th class="px-[10px] py-[13px] text-center font-semibold w-[36px]">
+              <input type="checkbox" [checked]="allOnPageSelected" (change)="toggleSelectAllOnPage()"
+                class="w-[15px] h-[15px] cursor-pointer align-middle" />
+            </th>
+            <th class="px-[16px] py-[13px] text-right font-semibold w-[40px]">#</th>
+            <th class="px-[16px] py-[13px] text-right font-semibold">الاسم</th>
+            <th class="px-3 py-[13px] text-right font-semibold w-[120px]">SKU</th>
+            <th class="px-3 py-[13px] text-right font-semibold">الفئة</th>
+            <th *ngIf="auth.canSeeCostPrice" class="px-3 py-[13px] text-center font-semibold w-[90px]">سعر التكلفة</th>
+            <th class="px-3 py-[13px] text-center font-semibold w-[90px]">سعر البيع</th>
+            <th class="px-3 py-[13px] text-center font-semibold w-[90px]">الكمية المتاحة</th>
+            <th class="px-3 py-[13px] text-center font-semibold w-[90px]">الحالة</th>
+            <th class="w-[110px]"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of products; let i = index"
+            class="border-t border-[#f1f2f4] hover:bg-[#fafbfc] transition" [ngClass]="isSelected(p.productId) ? 'bg-primary-soft/40' : ''">
+            <td class="px-[10px] py-[11px] text-center">
+              <input type="checkbox" [checked]="isSelected(p.productId)" (change)="toggleSelect(p.productId)"
+                class="w-[15px] h-[15px] cursor-pointer align-middle" />
+            </td>
+            <td class="px-[16px] py-[11px] text-muted text-[12px]">{{ (page - 1) * pageSize + i + 1 }}</td>
+            <td class="px-[16px] py-[11px] font-semibold">
+              <button (click)="openDetail(p.productId)" class="text-ink hover:text-primary-text hover:underline bg-transparent border-0 cursor-pointer p-0 font-semibold text-right">
+                {{ p.name }}
+              </button>
+            </td>
+            <td class="px-3 py-[11px] font-mono text-[12px] text-primary-text font-bold">{{ p.sku }}</td>
+            <td class="px-3 py-[11px] text-[#5b626d]">{{ p.categoryName }}</td>
+            <td *ngIf="auth.canSeeCostPrice" class="px-3 py-[11px] text-center font-mono text-[#5b626d]">{{ p.currentCostPrice != null ? (p.currentCostPrice | number:'1.2-2') : '—' }}</td>
+            <td class="px-3 py-[11px] text-center font-mono text-[#5b626d]">{{ p.currentSellPrice != null ? (p.currentSellPrice | number:'1.2-2') : '—' }}</td>
+            <td class="px-3 py-[11px] text-center" [ngClass]="p.availableQuantity < 0 ? 'text-danger font-semibold' : 'text-[#5b626d]'">
+              {{ p.availableQuantity }}
+            </td>
+            <td class="px-3 py-[11px] text-center">
+              <span class="px-2 py-[3px] rounded-full text-[11px] font-semibold"
+                [ngClass]="p.isActive ? 'bg-[#eaf7f1] text-[#0e9f6e]' : 'bg-[#fdeaea] text-danger'">
+                {{ p.isActive ? 'نشط' : 'غير نشط' }}
+              </span>
+            </td>
+            <td class="px-2 py-[11px]">
+              <div class="flex items-center justify-center gap-[5px]">
+                <button (click)="openDetail(p.productId)"
+                  class="w-7 h-7 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[12px] cursor-pointer"
+                  title="عرض التفاصيل">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+                <button [routerLink]="['/inventory/products/edit', p.productId]"
+                  class="w-7 h-7 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#fff8ec] hover:text-[#c2790a] hover:border-[#f5d99a] transition text-[12px] cursor-pointer"
+                  title="تعديل">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button (click)="deleteOne(p.productId)" [disabled]="deleting"
+                  class="w-7 h-7 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#fdeaea] hover:text-danger hover:border-[#f3d4d4] transition text-[12px] cursor-pointer disabled:opacity-50"
+                  title="حذف">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div *ngIf="loading" class="p-12 text-center text-muted">
+        <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+        جارٍ تحميل الأصناف…
+      </div>
+      <div *ngIf="!loading && products.length === 0" class="p-12 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-boxes-stacked text-[30px] block mb-3 opacity-40"></i>
+        لا توجد أصناف مطابقة.
+        <div class="mt-3">
+          <a routerLink="/inventory/products/add" class="text-primary-text text-[13px] font-semibold hover:underline">
+            <i class="fa-solid fa-plus text-[11px]"></i> اضافة أول صنف
+          </a>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="!loading && products.length > 0" class="flex flex-wrap items-center justify-between gap-[10px] px-[16px] py-[12px] border-t border-[#f1f2f4] text-[12.5px] text-muted">
+        <span>صفحة {{ page }} من {{ totalPages }} — {{ totalCount }} صنف</span>
+        <div class="flex gap-[8px]">
+          <button (click)="prevPage()" [disabled]="!hasPreviousPage"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-right"></i>
+          </button>
+          <button (click)="nextPage()" [disabled]="!hasNextPage"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-left"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions" (actionClick)="onQuickAction($event)"></app-quick-actions-panel>
+
+  </div>
+</div>
+
+<app-import-products-modal *ngIf="showImportModal" (closed)="showImportModal = false" (imported)="onImported()"></app-import-products-modal>
+<app-bulk-update-stock-modal *ngIf="showBulkUpdateStockModal" (closed)="showBulkUpdateStockModal = false" (updated)="onStockUpdated()"></app-bulk-update-stock-modal>
+
+<!-- Detail Modal -->
+<div *ngIf="selectedProduct || detailLoading"
+  class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+  (click)="closeDetail()">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[720px] shadow-[0_20px_60px_rgba(0,0,0,.18)] max-h-[92vh] overflow-y-auto"
+    (click)="$event.stopPropagation()">
+
+    <div *ngIf="detailLoading" class="p-14 text-center text-muted">
+      <i class="fa-solid fa-spinner fa-spin text-[28px] block mb-3"></i>
+      جارٍ تحميل تفاصيل الصنف…
+    </div>
+
+    <ng-container *ngIf="selectedProduct as p">
+      <div class="flex items-center justify-between px-[22px] py-[16px] border-b border-[#f0f1f4]">
+        <div class="flex items-center gap-[12px]">
+          <i class="fa-solid fa-box text-primary text-[18px]"></i>
+          <div class="text-[17px] font-bold">{{ p.name }}</div>
+          <span class="px-2 py-[3px] rounded-full text-[11px] font-semibold"
+            [ngClass]="p.isActive ? 'bg-[#eaf7f1] text-[#0e9f6e]' : 'bg-[#fdeaea] text-danger'">
+            {{ p.isActive ? 'نشط' : 'غير نشط' }}
+          </span>
+        </div>
+        <button (click)="closeDetail()"
+          class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px]">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-[22px]">
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-[14px] mb-[20px]">
+          <div><span class="text-[12px] text-muted block mb-[2px]">SKU</span><span class="font-mono font-bold">{{ p.sku }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">الفئة</span><span class="font-semibold">{{ p.categoryName }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">الباركود</span><span class="font-semibold">{{ p.barcode || '—' }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">نسبة الضريبة</span><span class="font-semibold">{{ p.taxRatePct }}%</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">حد إعادة الطلب</span><span class="font-semibold">{{ p.reorderLevel }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">الوزن (كجم)</span><span class="font-semibold">{{ p.weightKg }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">تتبع الدفعات</span><span class="font-semibold">{{ p.batchTrackingEnabled ? 'مفعّل' : 'غير مفعّل' }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">أُنشئ في</span><span class="font-semibold">{{ formatDate(p.createdAt) }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">آخر تحديث</span><span class="font-semibold">{{ formatDate(p.updatedAt) }}</span></div>
+        </div>
+
+        <!-- Price detail -->
+        <div class="rounded-[10px] border border-[#e3e6ea] p-[16px] mb-[20px]" *ngIf="p.priceDetail as pd">
+          <div class="text-[13px] font-bold mb-[10px] flex items-center gap-[8px]">
+            <i class="fa-solid fa-tags text-primary"></i> السعر الحالي
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-[12px] text-center mb-[6px]">
+            <div *ngIf="auth.canSeeCostPrice"><span class="text-[11px] text-muted block mb-[3px]">سعر التكلفة</span><span class="font-bold">{{ pd.currentCostPrice != null ? (pd.currentCostPrice | number:'1.2-2') : '—' }}</span></div>
+            <div><span class="text-[11px] text-muted block mb-[3px]">سعر البيع</span><span class="font-bold">{{ pd.currentSellPrice != null ? (pd.currentSellPrice | number:'1.2-2') : '—' }}</span></div>
+            <div *ngIf="auth.canSeeCostPrice"><span class="text-[11px] text-muted block mb-[3px]">نسبة الهامش</span><span class="font-bold">{{ pd.markupPercentage != null ? (pd.markupPercentage + '%') : '—' }}</span></div>
+            <div><span class="text-[11px] text-muted block mb-[3px]">العملة</span><span class="font-bold">{{ pd.currencyCode || '—' }}</span></div>
+          </div>
+          <div *ngIf="pd.supplierName" class="text-[12px] text-muted">المورّد المفضَّل: <span class="font-semibold text-ink">{{ pd.supplierName }}</span></div>
+
+          <!-- Price history -->
+          <div *ngIf="auth.canSeeCostPrice && pd.priceHistory.length" class="mt-[14px] rounded-[9px] overflow-hidden border border-[#e3e6ea]">
+            <table class="w-full text-[12.5px]">
+              <thead>
+                <tr class="bg-[#fafbfc] text-[11px] text-muted border-b border-[#e3e6ea]">
+                  <th class="px-[10px] py-[7px] text-right font-semibold">النوع</th>
+                  <th class="px-[10px] py-[7px] text-center font-semibold">القيمة</th>
+                  <th class="px-[10px] py-[7px] text-right font-semibold">ساري من</th>
+                  <th class="px-[10px] py-[7px] text-right font-semibold">ساري حتى</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let h of pd.priceHistory" class="border-t border-[#f0f1f4]">
+                  <td class="px-[10px] py-[7px] font-semibold">{{ h.priceType }}</td>
+                  <td class="px-[10px] py-[7px] text-center font-mono font-bold">{{ h.amount | number:'1.2-2' }}</td>
+                  <td class="px-[10px] py-[7px] text-muted">{{ formatDate(h.effectiveFrom) }}</td>
+                  <td class="px-[10px] py-[7px] text-muted">{{ h.effectiveTo ? formatDate(h.effectiveTo) : 'مفتوح' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Stock by warehouse -->
+        <div *ngIf="p.stockByWarehouse.length">
+          <div class="text-[13px] font-bold mb-[10px] flex items-center gap-[8px]">
+            <i class="fa-solid fa-warehouse text-primary"></i> المخزون حسب المخزن
+          </div>
+          <div class="rounded-[9px] overflow-hidden border border-[#e3e6ea]">
+            <table class="w-full text-[12.5px]">
+              <thead>
+                <tr class="bg-[#fafbfc] text-[11px] text-muted border-b border-[#e3e6ea]">
+                  <th class="px-[10px] py-[7px] text-right font-semibold">المخزن</th>
+                  <th class="px-[10px] py-[7px] text-center font-semibold">المتاح</th>
+                  <th class="px-[10px] py-[7px] text-center font-semibold">المحجوز</th>
+                  <th class="px-[10px] py-[7px] text-center font-semibold">الإجمالي</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let s of p.stockByWarehouse" class="border-t border-[#f0f1f4]">
+                  <td class="px-[10px] py-[7px] font-semibold">{{ warehouseName(s.warehouseId) }}</td>
+                  <td class="px-[10px] py-[7px] text-center font-mono">{{ s.availableQty | number:'1.0-2' }}</td>
+                  <td class="px-[10px] py-[7px] text-center font-mono" [ngClass]="s.reservedQty > 0 ? 'text-[#c2790a]' : 'text-muted'">{{ s.reservedQty | number:'1.0-2' }}</td>
+                  <td class="px-[10px] py-[7px] text-center font-mono font-bold">{{ (s.availableQty + s.reservedQty) | number:'1.0-2' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div *ngIf="!p.stockByWarehouse.length" class="text-center text-[12.5px] text-[#b3b9c2] py-[14px]">
+          <i class="fa-solid fa-warehouse text-[22px] block mb-2 opacity-40"></i>
+          لا يوجد مخزون مسجَّل لهذا الصنف بعد
+        </div>
+
+      </div>
+    </ng-container>
+  </div>
+</div>
+
+<!-- Modal الحذف الفوري للأصناف المكررة/المحتوية على رصيد -->
+<div *ngIf="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+  <div class="bg-white rounded-[16px] max-w-[500px] w-full p-[24px] shadow-2xl border border-line">
+    <div class="flex items-center gap-[12px] mb-[16px] text-danger">
+      <div class="w-10 h-10 rounded-full bg-[#fdeaea] flex items-center justify-center text-[18px]">
+        <i class="fa-solid fa-trash-can"></i>
+      </div>
+      <div>
+        <h3 class="text-[16px] font-bold text-[#1f2937]">
+          {{ pendingDeleteIds.length > 1 ? ('حذف ' + pendingDeleteIds.length + ' أصناف محدّدة') : 'حذف الصنف' }}
+        </h3>
+        <p class="text-[12px] text-muted">هل تريد التأكيد على حذف الصنف/الأصناف من النظام؟</p>
+      </div>
+    </div>
+
+    <div *ngIf="deleteErrorReasons.length > 0" class="mb-[14px] bg-[#fdf6e3] border border-[#f0dca0] text-[#8a6d1a] rounded-[10px] p-[12px] text-[12px]">
+      <p class="font-bold mb-[4px]">تنبيه حول الحذف القياسي:</p>
+      <ul class="list-disc pr-[16px] space-y-1">
+        <li *ngFor="let reason of deleteErrorReasons">{{ reason }}</li>
+      </ul>
+    </div>
+
+    <div class="mb-[18px] bg-[#f8fafc] border border-[#e2e8f0] rounded-[10px] p-[14px] text-[12.5px] leading-relaxed">
+      <label class="flex items-start gap-[10px] cursor-pointer select-none">
+        <input type="checkbox" [(ngModel)]="forceDeleteCheckbox" class="w-[17px] h-[17px] mt-[2px] cursor-pointer accent-danger" />
+        <div>
+          <span class="font-bold text-[#1e293b]">حذف إجباري وتفريغ الكميات المخزنية (تفريغ رصيد الأصناف المكررة/الملغاة)</span>
+          <p class="text-[11.5px] text-muted mt-[2px]">
+            يتيح حذف الأصناف المكررة حتى لو كانت تحتوي على كميات متبقية في المخازن بتفريغ رصيدها فوراً.
+          </p>
+        </div>
+      </label>
+    </div>
+
+    <div class="flex items-center justify-end gap-[10px]">
+      <button (click)="closeDeleteModal()" [disabled]="deleting"
+        class="px-[16px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13px] font-semibold text-[#4b5563] hover:bg-[#f3f4f7] transition cursor-pointer">
+        إلغاء
+      </button>
+      <button (click)="confirmDelete()" [disabled]="deleting"
+        class="flex items-center gap-[6px] px-[18px] py-[8px] bg-danger text-white rounded-[9px] text-[13px] font-semibold hover:bg-danger/90 transition cursor-pointer disabled:opacity-50">
+        <i class="fa-solid" [ngClass]="deleting ? 'fa-spinner fa-spin' : 'fa-trash-can'"></i>
+        <span>{{ deleting ? 'جاري الحذف...' : 'حذف فوراً' }}</span>
+      </button>
+    </div>
+  </div>
+</div>

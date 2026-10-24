@@ -1,0 +1,22 @@
+<div>
+  <div *ngIf="showBreadcrumb" class="flex items-center gap-[7px] text-[12px] sm:text-[12.5px] text-muted mb-4 overflow-x-auto whitespace-nowrap pb-1">
+    <i class="fa-solid fa-house text-[11px]"></i>
+    <ng-container *ngFor="let crumb of breadcrumbs; let last = last">
+      <i class="fa-solid fa-angle-left text-[10px]"></i>
+      <a *ngIf="crumb.route && !last" [routerLink]="routePath(crumb.route)" [queryParams]="routeQueryParams(crumb.route)" class="hover:text-primary-text cursor-pointer">{{ crumb.label }}</a>
+      <span *ngIf="!crumb.route || last" [class.text-ink]="last" [class.font-bold]="last">{{ crumb.label }}</span>
+    </ng-container>
+  </div>
+  <div *ngIf="showTitle" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-[18px]">
+    <div>
+      <div class="text-[17px] sm:text-[19px] font-bold flex items-center gap-[9px]">
+        <i *ngIf="icon" [class]="icon + ' text-primary'"></i>
+        {{ title }}
+      </div>
+      <div *ngIf="subtitle" class="text-[12px] sm:text-[12.5px] text-muted mt-1">{{ subtitle }}</div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <ng-content></ng-content>
+    </div>
+  </div>
+</div>

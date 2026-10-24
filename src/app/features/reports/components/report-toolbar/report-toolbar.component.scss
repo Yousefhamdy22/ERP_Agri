@@ -1,0 +1,103 @@
+.report-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  margin-bottom: 12px;
+}
+
+.toolbar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+
+  i {
+    font-size: 16px;
+    color: #3b82f6;
+  }
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #475569;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &--preview {
+    color: #4338ca;
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    font-weight: 600;
+    &:hover:not(:disabled) {
+      background: #e0e7ff;
+      border-color: #a5b4fc;
+    }
+  }
+
+  &--pdf {
+    color: #dc2626;
+    border-color: #fecaca;
+    &:hover:not(:disabled) {
+      background: #fef2f2;
+    }
+  }
+
+  &--excel {
+    color: #16a34a;
+    border-color: #bbf7d0;
+    &:hover:not(:disabled) {
+      background: #f0fdf4;
+    }
+  }
+
+  &--csv {
+    color: #0ea5e9;
+    border-color: #bae6fd;
+    &:hover:not(:disabled) {
+      background: #f0f9ff;
+    }
+  }
+
+  &--print {
+    color: #6366f1;
+    border-color: #c7d2fe;
+    &:hover:not(:disabled) {
+      background: #eef2ff;
+    }
+  }
+}
+
+@media print {
+  .report-toolbar {
+    display: none !important;
+  }
+}

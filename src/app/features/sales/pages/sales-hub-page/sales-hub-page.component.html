@@ -1,0 +1,77 @@
+<div class="pt-[18px]">
+  <div class="flex items-center gap-[7px] text-[12.5px] text-muted mb-4">
+    <i class="fa-solid fa-house text-[11px]"></i><span>الرئيسية</span>
+    <i class="fa-solid fa-angle-left text-[10px]"></i>
+    <span class="text-ink font-bold">{{ module.name }}</span>
+  </div>
+
+  <!-- stats -->
+  <div class="bg-white border border-line rounded-[13px] mb-[18px] overflow-hidden">
+    <div (click)="toggleStats()" class="flex justify-between items-center px-[18px] py-[13px] cursor-pointer border-b border-[#f0f1f4]">
+      <div class="text-[13.5px] font-bold flex items-center gap-2"><i class="fa-solid fa-chart-simple text-primary"></i> أهم الإحصاءات</div>
+      <i class="text-[#b3b9c2] text-[13px]" [ngClass]="statsOpen ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+    </div>
+    <div *ngIf="statsOpen" class="px-[18px] py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[14px]">
+      <div *ngFor="let k of visibleKpis" class="flex items-center gap-[13px]">
+        <div class="w-[46px] h-[46px] rounded-[12px] flex items-center justify-center text-[18px] shrink-0"
+             [style.background]="k.iconBg" [style.color]="k.iconColor"><i [class]="k.icon"></i></div>
+        <div class="min-w-0">
+          <div class="text-[12px] text-muted">{{ k.label }}</div>
+          <div class="text-[19px] font-bold tracking-tight my-[1px]">{{ k.value }}</div>
+          <div class="text-[11px] font-semibold" [style.color]="k.color">{{ k.sub }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex flex-col lg:flex-row gap-[18px] items-start">
+    <!-- main -->
+    <div class="flex-1 min-w-0 w-full">
+      <div class="bg-white border border-line rounded-[13px] px-5 mb-[18px] flex gap-[30px] overflow-x-auto">
+        <button *ngFor="let t of visibleTabs" (click)="setTab(t.id)"
+          class="py-[14px] text-[13.5px] font-semibold cursor-pointer bg-transparent border-0 whitespace-nowrap flex items-center gap-[7px] border-b-[3px]"
+          [ngClass]="activeTab === t.id ? 'border-primary text-primary-text' : 'border-transparent text-muted'">
+          <i [class]="t.icon" class="text-[13px]"></i>{{ t.label }}
+        </button>
+      </div>
+
+      <div class="grid gap-4 items-start" style="grid-template-columns:repeat(auto-fit,minmax(min(100%, 280px),1fr))">
+        <div *ngFor="let g of groups" class="bg-white border border-line rounded-[13px] px-[18px] pt-4 pb-[18px]">
+          <div class="flex items-center gap-[9px] text-[13.5px] font-bold pb-[13px] mb-[15px] border-b border-[#f0f1f4]">
+            <span class="w-1 h-4 rounded bg-primary"></span>{{ g.title }}
+          </div>
+          <div class="grid gap-[11px]" style="grid-template-columns:repeat(auto-fill,minmax(min(100%, 200px),1fr))">
+            <div *ngFor="let op of g.ops" (click)="runOp(op)"
+              class="flex items-center gap-[13px] px-[14px] py-[13px] rounded-[12px] cursor-pointer border transition hover:border-primary hover:shadow-[0_4px_14px_rgba(81,86,190,.12)] hover:-translate-y-px"
+              [ngClass]="op.primary ? 'bg-[#f6f6fd] border-[#dcdef5]' : 'bg-white border-[#eceef1]'">
+              <span class="w-10 h-10 rounded-[10px] flex items-center justify-center text-[15px] shrink-0"
+                [ngClass]="op.primary ? 'bg-primary text-white' : 'bg-primary-soft text-primary'"><i [class]="op.icon"></i></span>
+              <div class="flex-1 min-w-0">
+                <div class="text-[13px] font-semibold leading-[1.35]">{{ op.label }}</div>
+                <div *ngIf="op.count != null" class="text-[11px] text-muted mt-[3px]">مسجل <b class="text-primary">{{ op.count }}</b></div>
+              </div>
+              <i class="fa-solid fa-angle-left text-[#cfd4dc] text-[13px]"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- sidebar -->
+    <div class="w-full lg:w-[248px] shrink-0 flex flex-col gap-4 static lg:sticky lg:top-[18px]">
+      <div class="bg-white border border-line rounded-[13px] overflow-hidden">
+        <div class="bg-primary text-white px-4 py-[13px] text-[13.5px] font-bold flex items-center gap-2"><i class="fa-solid fa-bolt"></i> أهم العمليات</div>
+        <div class="p-2 max-h-[420px] overflow-y-auto">
+          <div *ngFor="let q of shortcuts" (click)="runOp(q)"
+            class="flex items-center gap-[11px] px-[9px] py-[10px] rounded-[9px] cursor-pointer text-[12.5px] text-[#3a4049] font-medium hover:bg-primary-soft hover:text-primary-text">
+            <i [class]="q.icon" class="text-primary text-[13px] w-[17px]"></i>{{ q.label }}
+          </div>
+        </div>
+      </div>
+      <div class="bg-white border border-line rounded-[13px] p-4">
+        <div class="text-[13.5px] font-bold mb-[11px] flex items-center gap-2"><i class="fa-regular fa-lightbulb text-[#e0a818]"></i> تلميحات</div>
+        <div class="text-[12.5px] text-[#6b7280] leading-[1.85]">اضغط على اسم أي قسم في الشريط الأزرق لتفتح قائمة منسدلة تختار منها العملية أو الشاشة مباشرة.</div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,53 @@
+<div class="bg-white border border-line rounded-[13px] overflow-hidden">
+
+  <div *ngFor="let node of nodes; let last = last"
+    class="flex items-center gap-[10px] px-[18px] py-[12px] hover:bg-[#fafbfc] transition"
+    [class.border-b]="!last" [class.border-[#f0f1f4]]="!last">
+
+    <!-- indentation spacer -->
+    <div [style.width.px]="indent(node.level)" class="shrink-0"></div>
+
+    <!-- expand / leaf indicator -->
+    <button *ngIf="node.hasChildren" (click)="toggle(node.category.categoryId)"
+      class="w-6 h-6 flex items-center justify-center text-[#a3a8b2] hover:text-primary cursor-pointer bg-transparent border-0 shrink-0">
+      <i class="text-[11px]" [class]="isCollapsed(node.category.categoryId) ? 'fa-solid fa-angle-left' : 'fa-solid fa-angle-down'"></i>
+    </button>
+    <div *ngIf="!node.hasChildren" class="w-6 flex items-center justify-center shrink-0">
+      <span class="w-[6px] h-[6px] rounded-full bg-[#d0d4dc]"></span>
+    </div>
+
+    <!-- icon -->
+    <i class="text-[15px] shrink-0"
+      [class]="node.hasChildren ? 'fa-solid fa-folder text-[#e0a818]' : 'fa-regular fa-folder text-[#c0a050]'"></i>
+
+    <!-- names -->
+    <div class="flex-1 min-w-0">
+      <span class="text-[13.5px] font-semibold">{{ node.category.nameAr || node.category.name }}</span>
+      <span *ngIf="node.category.name" class="text-[12px] text-muted ms-2">{{ node.category.name }}</span>
+    </div>
+
+    <!-- children badge -->
+    <span *ngIf="node.hasChildren"
+      class="text-[11px] bg-[#eef0fb] text-[#5156be] px-[9px] py-[2px] rounded-full font-bold shrink-0">
+      {{ node.category.children?.length }} فرعية
+    </span>
+
+    <!-- actions -->
+    <div class="flex items-center gap-[6px] shrink-0">
+      <button (click)="edit.emit(node.category)"
+        class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[12px] cursor-pointer">
+        <i class="fa-solid fa-pen-to-square"></i>
+      </button>
+      <button (click)="deleteCategory.emit(node.category)"
+        class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#fdeaea] hover:text-danger hover:border-[#f3d4d4] transition text-[12px] cursor-pointer">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="nodes.length === 0"
+    class="p-12 text-center text-[#b3b9c2]">
+    <i class="fa-solid fa-folder-open text-[30px] block mb-3 opacity-40"></i>
+    لا توجد مجموعات أصناف مسجلة بعد
+  </div>
+</div>

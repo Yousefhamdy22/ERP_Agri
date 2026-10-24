@@ -1,0 +1,264 @@
+<app-page-header
+  title="الإيرادات والمصروفات التفصيلي"
+  subtitle="Detailed Revenue & Expenses Report"
+  icon="fa-solid fa-chart-line">
+</app-page-header>
+
+<!-- Filters -->
+<div class="rev-exp-filters">
+  <div class="filter-row">
+    <div class="filter-group">
+      <label>الفترة المالية</label>
+      <app-select
+          [(ngModel)]="selectedPeriodId"
+          [options]="[{value: '', label: 'اختر الفترة...'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode})))"
+          placeholder="اختر الفترة..."
+          [disabled]="periodsLoading"
+          />
+    </div>
+
+    <div class="filter-group">
+      <label>الفرع</label>
+      <app-select
+          [(ngModel)]="selectedBranchId"
+          [options]="[{value: '', label: 'كل الفروع'}].concat(branches.map(b => ({value: b.id, label: b.name || ''})))"
+          placeholder="كل الفروع"
+          [disabled]="branchesLoading"
+          [searchable]="true"
+          />
+    </div>
+
+    <div class="filter-group">
+      <label>من تاريخ</label>
+      <input type="date" [(ngModel)]="fromDate" />
+    </div>
+
+    <div class="filter-group">
+      <label>إلى تاريخ</label>
+      <input type="date" [(ngModel)]="toDate" />
+    </div>
+
+    <div class="filter-actions">
+      <button class="btn-primary" (click)="loadReport()" [disabled]="loading || !selectedPeriodId">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        عرض التقرير
+      </button>
+      <button type="button" class="btn-preview-pdf" (click)="previewPdf()" [disabled]="!selectedPeriodId || pdfLoading">
+        <i class="fa-solid" [ngClass]="pdfLoading ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i>
+        معاينة PDF
+      </button>
+      <button class="btn-outline" (click)="printReport()" [disabled]="!report">
+        <i class="fa-solid fa-print"></i>
+        طباعة
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div *ngIf="loading" class="loading-state">
+  <i class="fa-solid fa-spinner fa-spin"></i>
+  <span>جاري تحميل التقرير...</span>
+</div>
+
+<!-- Error -->
+<div *ngIf="error" class="error-state">
+  <i class="fa-solid fa-circle-exclamation"></i>
+  <span>{{ error }}</span>
+</div>
+
+<!-- Report Content -->
+<div *ngIf="report && !loading" class="report-content">
+
+  <!-- Unified Professional Print Header -->
+  <app-invoice-print-header
+    documentTitle="الإيرادات والمصروفات التفصيلي"
+    [documentSubtitle]="'الفترة: ' + (report.periodCode || '—') + ' | من ' + (report.fromDate | date:'yyyy/MM/dd') + ' إلى ' + (report.toDate | date:'yyyy/MM/dd')"
+    [printedAt]="today"
+    class="hidden print:block mb-4"
+  ></app-invoice-print-header>
+
+  <!-- Summary Cards -->
+  <div class="summary-cards">
+    <div class="summary-card revenue">
+      <div class="card-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+      <div class="card-body">
+        <span class="card-label">إجمالي الإيرادات</span>
+        <span class="card-value">{{ formatCurrency(report.summary.totalRevenue) }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card cogs">
+      <div class="card-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+      <div class="card-body">
+        <span class="card-label">تكلفة المبيعات</span>
+        <span class="card-value">{{ formatCurrency(report.summary.totalCostOfSales) }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card gross">
+      <div class="card-icon"><i class="fa-solid fa-chart-pie"></i></div>
+      <div class="card-body">
+        <span class="card-label">مجمل الربح</span>
+        <span class="card-value">{{ formatCurrency(report.summary.grossProfit) }}</span>
+        <span class="card-badge">{{ report.summary.grossMarginPercent }}%</span>
+      </div>
+    </div>
+
+    <div class="summary-card expenses">
+      <div class="card-icon"><i class="fa-solid fa-arrow-trend-down"></i></div>
+      <div class="card-body">
+        <span class="card-label">إجمالي المصروفات</span>
+        <span class="card-value">{{ formatCurrency(report.summary.totalExpenses) }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card net" [class.negative]="report.summary.netIncome < 0">
+      <div class="card-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+      <div class="card-body">
+        <span class="card-label">صافي الربح</span>
+        <span class="card-value">{{ formatCurrency(report.summary.netIncome) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Period Info -->
+  <div class="period-info">
+    <span>الفترة: {{ report.periodCode }}</span>
+    <span>من {{ report.fromDate | date:'yyyy/MM/dd' }} إلى {{ report.toDate | date:'yyyy/MM/dd' }}</span>
+    <span *ngIf="report.branchName">الفرع: {{ report.branchName }}</span>
+  </div>
+
+  <!-- Sections -->
+  <div class="report-sections">
+    <div *ngFor="let section of report.sections" class="report-section">
+      <div class="section-header" (click)="toggleSection(section.sectionKey)">
+        <div class="section-title">
+          <i class="fa-solid" [ngClass]="expandedSections[section.sectionKey] ? 'fa-chevron-down' : 'fa-chevron-left'"></i>
+          <span class="section-name">{{ section.sectionNameAr }}</span>
+          <span class="section-name-en">{{ section.sectionNameEn }}</span>
+        </div>
+        <span class="section-total">{{ formatCurrency(section.sectionTotal) }}</span>
+      </div>
+
+      <div class="section-body" *ngIf="expandedSections[section.sectionKey]">
+        <table class="accounts-table">
+          <thead>
+            <tr>
+              <th class="col-code">الكود</th>
+              <th class="col-name">اسم الحساب</th>
+              <th class="col-amount">المبلغ</th>
+              <th class="col-percent">النسبة</th>
+              <th class="col-bar">التوزيع</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let acc of section.accounts" [class.parent-account]="!acc.isLeaf">
+              <td class="col-code">{{ acc.accountCode }}</td>
+              <td class="col-name" [style.paddingRight.px]="acc.level * 16 + 8">
+                {{ acc.accountNameAr || acc.accountName }}
+              </td>
+              <td class="col-amount">{{ formatCurrency(acc.balance) }}</td>
+              <td class="col-percent">{{ acc.percentOfSection }}%</td>
+              <td class="col-bar">
+                <div class="bar-container">
+                  <div class="bar-fill" [ngClass]="section.sectionKey"
+                       [style.width.%]="getBarWidth(acc.balance, section.sectionTotal)"></div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td></td>
+              <td class="col-name"><strong>الإجمالي</strong></td>
+              <td class="col-amount"><strong>{{ formatCurrency(section.sectionTotal) }}</strong></td>
+              <td class="col-percent"><strong>100%</strong></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Income Summary -->
+  <div class="income-summary">
+    <div class="income-row">
+      <span>إجمالي الإيرادات</span>
+      <span class="positive">{{ formatCurrency(report.summary.totalRevenue) }}</span>
+    </div>
+    <div class="income-row">
+      <span>(-) تكلفة المبيعات</span>
+      <span class="negative">{{ formatCurrency(report.summary.totalCostOfSales) }}</span>
+    </div>
+    <div class="income-row highlight">
+      <span>مجمل الربح ({{ report.summary.grossMarginPercent }}%)</span>
+      <span [class.positive]="report.summary.grossProfit >= 0"
+            [class.negative]="report.summary.grossProfit < 0">
+        {{ formatCurrency(report.summary.grossProfit) }}
+      </span>
+    </div>
+    <div class="income-row">
+      <span>(-) المصروفات التشغيلية</span>
+      <span class="negative">{{ formatCurrency(report.summary.totalExpenses) }}</span>
+    </div>
+    <div class="income-row final">
+      <span>صافي الربح / (الخسارة)</span>
+      <span [class.positive]="report.summary.netIncome >= 0"
+            [class.negative]="report.summary.netIncome < 0">
+        {{ formatCurrency(report.summary.netIncome) }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Monthly Trend -->
+  <div class="monthly-trend" *ngIf="report.monthlyTrend.length > 1">
+    <h3 class="trend-title">
+      <i class="fa-solid fa-chart-bar"></i>
+      الاتجاه الشهري
+    </h3>
+    <div class="trend-table-wrap">
+      <table class="trend-table">
+        <thead>
+          <tr>
+            <th>الشهر</th>
+            <th>الإيرادات</th>
+            <th>تكلفة المبيعات</th>
+            <th>المصروفات</th>
+            <th>مجمل الربح</th>
+            <th>صافي الربح</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let m of report.monthlyTrend">
+            <td class="month-name">{{ m.monthNameAr }} {{ m.year }}</td>
+            <td>{{ formatCurrency(m.revenue) }}</td>
+            <td>{{ formatCurrency(m.costOfSales) }}</td>
+            <td>{{ formatCurrency(m.expenses) }}</td>
+            <td [class.positive]="m.grossProfit >= 0" [class.negative]="m.grossProfit < 0">
+              {{ formatCurrency(m.grossProfit) }}
+            </td>
+            <td [class.positive]="m.netIncome >= 0" [class.negative]="m.netIncome < 0">
+              {{ formatCurrency(m.netIncome) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<app-pdf-preview-modal
+  [isOpen]="pdfModalOpen"
+  title="معاينة تفاصيل الإيرادات والمصروفات (PDF)"
+  subtitle="Detailed Revenue & Expenses"
+  [pdfUrl]="pdfUrl"
+  [fileName]="pdfFileName"
+  [loading]="pdfLoading"
+  [error]="pdfError"
+  (close)="closePdfModal()"
+  (download)="downloadPdf()"
+  (print)="printReport()"
+  (retry)="previewPdf()"
+></app-pdf-preview-modal>

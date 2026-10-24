@@ -1,0 +1,94 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="اضافة حساب"
+      icon="fa-solid fa-sitemap">
+    </app-page-header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            كود الحساب <span class="text-danger">*</span>
+          </label>
+          <input formControlName="accountCode" autofocus placeholder="مثال: 1120" maxlength="20"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+            [ngClass]="invalid('accountCode') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('accountCode')" class="text-[11px] text-danger mt-[4px]">كود الحساب مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            الاسم بالعربية <span class="text-danger">*</span>
+          </label>
+          <input formControlName="nameAr" placeholder="مثال: صندوق الفرع الثاني"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('nameAr') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('nameAr')" class="text-[11px] text-danger mt-[4px]">الاسم بالعربية مطلوب (حرفان على الأقل)</div>
+        </div>
+
+        <div class="col-span-1 md:col-span-2 group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            الاسم بالإنجليزية <span class="text-danger">*</span>
+          </label>
+          <input formControlName="name" placeholder="e.g. Branch 2 Cash"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('name') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('name')" class="text-[11px] text-danger mt-[4px]">الاسم بالإنجليزية مطلوب (حرفان على الأقل)</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">نوع الحساب <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="type"
+          [options]="typeOptions.map(t => ({value: t.value, label: t.label}))"
+          />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الطبيعة (مدين/دائن) <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="normalBalance"
+          [options]="balanceOptions.map(b => ({value: b.value, label: b.label}))"
+          />
+        </div>
+
+        <div class="col-span-1 md:col-span-2">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الحساب الرئيسي
+            <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري — اتركه فارغاً لإنشاء حساب رئيسي جديد)</span>
+          </label>
+          <app-tree-select
+            formControlName="parentAccountId"
+            [options]="accountOptions"
+            placeholder="— بدون حساب رئيسي —">
+          </app-tree-select>
+          <div class="text-[11px] text-muted mt-[4px] flex items-center gap-[5px]">
+            <i class="fa-solid fa-circle-info text-[10px]"></i>
+            اختر حساباً رئيسياً لإضافة هذا الحساب كفرع تحته (مثال: تحت "1000 الأصول")
+          </div>
+        </div>
+
+      </div>
+
+      <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+        <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">
+          {{ saving ? 'جارٍ الحفظ…' : 'حفظ الحساب' }}
+        </app-button>
+        <app-button variant="ghost" routerLink="/accounting/accounts/manage">إلغاء</app-button>
+      </div>
+    </form>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

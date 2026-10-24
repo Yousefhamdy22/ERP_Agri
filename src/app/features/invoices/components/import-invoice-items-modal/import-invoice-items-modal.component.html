@@ -1,0 +1,110 @@
+<div class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" (click)="close()">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[760px] shadow-[0_20px_60px_rgba(0,0,0,.18)] max-h-[92vh] overflow-y-auto" (click)="$event.stopPropagation()">
+
+    <div class="flex items-center justify-between px-[22px] py-[16px] border-b border-[#f0f1f4]">
+      <div class="flex items-center gap-[10px]">
+        <i class="fa-solid fa-file-excel text-[#0e9f6e] text-[18px]"></i>
+        <div class="text-[16px] font-bold">اضافة أصناف من ملف إكسيل</div>
+      </div>
+      <button (click)="close()"
+        class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px]">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="p-[22px]">
+
+      <!-- Step 1: Download template + Upload -->
+      <ng-container *ngIf="step === 1">
+        <button (click)="downloadTemplate()"
+          class="w-full flex items-center justify-center gap-[8px] px-4 py-[11px] rounded-[9px] border border-[#e3e6ea] bg-white text-[#4b5563] text-[13.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer mb-[16px]">
+          <i class="fa-solid fa-download"></i> تحميل القالب الفارغ
+        </button>
+
+        <div
+          (drop)="onDrop($event)" (dragover)="onDragOver($event)" (dragleave)="onDragLeave()"
+          class="border-2 border-dashed rounded-[12px] p-[24px] text-center transition"
+          [ngClass]="dragging ? 'border-primary bg-primary-soft/30' : 'border-[#e3e6ea]'">
+          <i class="fa-solid text-[32px] text-[#c3c8d0] block mb-[10px]" [ngClass]="parsing ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-up'"></i>
+          <div class="text-[13px] text-[#5b626d] mb-[10px]">{{ parsing ? 'جارٍ قراءة الملف…' : 'اسحب الملف هنا أو' }}</div>
+          <label *ngIf="!parsing"
+            class="inline-block px-4 py-[9px] rounded-[9px] bg-primary text-white text-[12.5px] font-semibold cursor-pointer hover:bg-primary-dark transition">
+            اختر ملفاً
+            <input type="file" accept=".csv" (change)="onFileSelected($event)" class="hidden" />
+          </label>
+          <div class="text-[11px] text-muted mt-[10px]">csv. فقط — بنفس أعمدة القالب أعلاه، حتى 5 ميجابايت</div>
+        </div>
+      </ng-container>
+
+      <!-- Step 2: Preview & Confirm -->
+      <ng-container *ngIf="step === 2">
+        <div class="flex items-center justify-between mb-[14px]">
+          <div class="text-[13px] font-semibold">{{ validRows.length }} صنف صالح من إجمالي {{ rows.length }}</div>
+          <button (click)="back()" class="text-[12px] text-primary-text hover:underline bg-transparent border-0 cursor-pointer">
+            <i class="fa-solid fa-arrow-right text-[10px]"></i> رفع ملف آخر
+          </button>
+        </div>
+
+        <div *ngIf="!rows.length" class="text-center p-[24px] text-[#b3b9c2]">
+          <i class="fa-solid fa-file-circle-exclamation text-[26px] block mb-2 opacity-40"></i>
+          <span class="text-[12.5px]">الملف فارغ أو لا يحتوي بيانات صالحة</span>
+        </div>
+
+        <div *ngIf="rows.length" class="rounded-[9px] overflow-hidden border border-[#e3e6ea] mb-[16px] max-h-[320px] overflow-auto">
+          <table class="w-full text-[12.5px] min-w-[620px]">
+            <thead>
+              <tr class="bg-[#fafbfc] text-[11px] text-muted border-b border-[#e3e6ea]">
+                <th class="px-[10px] py-[7px] text-right font-semibold">SKU</th>
+                <th class="px-[10px] py-[7px] text-right font-semibold">الصنف</th>
+                <th class="px-[10px] py-[7px] text-center font-semibold">الكمية</th>
+                <th class="px-[10px] py-[7px] text-center font-semibold">السعر</th>
+                <th class="px-[10px] py-[7px] text-center font-semibold">خصم%</th>
+                <th class="px-[10px] py-[7px] text-center font-semibold">ضريبة%</th>
+                <th class="px-[10px] py-[7px] text-right font-semibold">ملاحظة</th>
+                <th class="px-[10px] py-[7px]"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of rows" class="border-t border-[#f0f1f4]"
+                [ngClass]="r.error ? 'bg-[#fdeaea]' : (r.duplicate ? 'bg-[#fdf6e3]' : '')">
+                <td class="px-[10px] py-[7px] font-mono">{{ r.sku }}</td>
+                <td class="px-[10px] py-[7px] truncate max-w-[140px]" [title]="r.productLabel">{{ r.productLabel }}</td>
+                <td class="px-[10px] py-[7px] text-center">{{ r.quantity }}</td>
+                <td class="px-[10px] py-[7px] text-center font-mono">{{ r.unitPrice | number:'1.2-2' }}</td>
+                <td class="px-[10px] py-[7px] text-center">{{ r.discountPct }}%</td>
+                <td class="px-[10px] py-[7px] text-center">{{ r.taxPct }}%</td>
+                <td class="px-[10px] py-[7px]">
+                  <span *ngIf="r.error" class="text-danger font-semibold text-[11px]"><i class="fa-solid fa-circle-exclamation"></i> {{ r.error }}</span>
+                  <span *ngIf="!r.error && r.duplicate" class="text-[#8a6d1a] font-semibold text-[11px]"><i class="fa-solid fa-triangle-exclamation"></i> مكرر بالفاتورة</span>
+                </td>
+                <td class="px-[10px] py-[7px] text-center">
+                  <button (click)="removeRow(r)"
+                    class="w-6 h-6 rounded-full text-[11px] text-danger hover:bg-[#fdeaea] cursor-pointer border-0 bg-transparent transition">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div *ngIf="validRows.length" class="bg-[#fafbfc] border border-[#f0f1f4] rounded-[10px] px-[14px] py-[12px] text-[12.5px] flex justify-between mb-[16px]">
+          <span class="text-muted">إجمالي الأصناف المُضافة (تقديري)</span>
+          <span class="font-bold text-primary-text">{{ totalAmount | number:'1.2-2' }}</span>
+        </div>
+
+        <div class="flex gap-[10px]">
+          <button (click)="close()"
+            class="px-4 py-[11px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer">
+            إلغاء
+          </button>
+          <button (click)="confirm()" [disabled]="!validRows.length"
+            class="flex-1 px-4 py-[11px] rounded-[9px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-dark transition cursor-pointer disabled:opacity-50">
+            <i class="fa-solid fa-plus"></i> إضافة {{ validRows.length }} صنف للفاتورة
+          </button>
+        </div>
+      </ng-container>
+
+    </div>
+  </div>
+</div>

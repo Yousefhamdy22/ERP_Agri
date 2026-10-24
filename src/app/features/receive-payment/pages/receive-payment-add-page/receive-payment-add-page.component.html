@@ -1,0 +1,183 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="استلام دفعة"
+      icon="fa-solid fa-hand-holding-dollar">
+    </app-page-header>
+
+    <form [formGroup]="form" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm mb-[18px]">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">العميل <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="customerId"
+          [options]="[{value: '', label: '— اختر العميل —'}].concat(customers.map(c => ({value: c.id, label: c.name})))"
+          placeholder="— اختر العميل —"
+          (changed)="onCustomerSelected()"
+          [searchable]="true"
+          />
+          <div *ngIf="invalid('customerId')" class="text-[11px] text-danger mt-[4px]">اختر العميل</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">المبلغ المستلَم <span class="text-danger">*</span></label>
+          <input type="number" step="0.01" min="0.01" formControlName="amount"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+            [ngClass]="invalid('amount') ? 'border-danger' : 'border-[#e3e6ea]'" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">طريقة الدفع <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="paymentMethod"
+          [options]="paymentMethods.map(m => ({value: m.value, label: m.label}))"
+          />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">حساب الاستلام (النقدية/البنك) <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="paymentAccountCode"
+          [options]="cashAccounts.map(a => ({value: a.code, label: a.label}))"
+          />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ الاستلام <span class="text-danger">*</span></label>
+          <input type="date" formControlName="paymentDate"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('paymentDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الفرع <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="branchId"
+          [options]="[{value: '', label: '— اختر الفرع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="— اختر الفرع —"
+          [searchable]="true"
+          />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الفترة المالية <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="fiscalPeriodId"
+          [options]="[{value: '', label: '— اختر الفترة المالية —'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode + ' (' + p.startDate.slice(0, 10) + ' — ' + p.endDate.slice(0, 10) + ')'})))"
+          placeholder="— اختر الفترة المالية —"
+          />
+          <div *ngIf="!fiscalPeriods.length" class="text-[11px] text-muted mt-[4px]">لا توجد فترات مالية مفتوحة</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            المرجع <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <input formControlName="referenceNo" placeholder="رقم إيصال، شيك، تحويل…"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+        </div>
+
+        <div class="col-span-1 md:col-span-2 group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            ملاحظات <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <textarea formControlName="notes" rows="2" placeholder="ملاحظات إضافية…"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary resize-none transition"></textarea>
+        </div>
+      </div>
+    </form>
+
+    <!-- Unpaid invoices allocation -->
+    <div class="bg-white border border-line rounded-[13px] p-[22px] shadow-sm mb-[18px]" *ngIf="form.value.customerId">
+      <div class="flex items-center justify-between mb-[14px] flex-wrap gap-[8px]">
+        <div class="text-[14px] font-bold">توزيع المبلغ على الفواتير غير المسددة</div>
+        <div class="flex gap-[8px]">
+          <button (click)="autoAllocate()" [disabled]="!invoiceRows.length"
+            class="px-3 py-[8px] rounded-[8px] border border-[#dce6fb] bg-[#eef1fd] text-[#5156be] text-[12.5px] font-semibold hover:bg-[#dce6fb] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> توزيع تلقائي (الأقدم أولاً)
+          </button>
+          <button (click)="clearAllocations()" [disabled]="!invoiceRows.length"
+            class="px-3 py-[8px] rounded-[8px] border border-line bg-white text-[#5b626d] text-[12.5px] hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+            مسح التوزيع
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="loadingInvoices" class="p-8 text-center text-muted">
+        <i class="fa-solid fa-spinner fa-spin text-[22px] block mb-2"></i>
+        جارٍ تحميل الفواتير…
+      </div>
+
+      <div *ngIf="!loadingInvoices && invoiceRows.length" class="border border-[#e3e6ea] rounded-[10px] overflow-hidden">
+        <table class="w-full text-[12.5px] table-fixed">
+          <colgroup>
+            <col class="w-[26%]" />
+            <col class="w-[20%]" />
+            <col class="w-[27%]" />
+            <col class="w-[27%]" />
+          </colgroup>
+          <thead>
+            <tr class="bg-[#f6f7f9] text-[11.5px] text-[#5b626d]">
+              <th class="px-2 py-[9px] text-right font-semibold">رقم الفاتورة</th>
+              <th class="px-2 py-[9px] text-right font-semibold">التاريخ</th>
+              <th class="px-2 py-[9px] text-center font-semibold">المتبقي</th>
+              <th class="px-2 py-[9px] text-center font-semibold">المبلغ المخصَّص</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of invoiceRows" class="border-t border-[#f1f2f4]">
+              <td class="px-2 py-[8px] font-mono font-semibold truncate">{{ row.invoiceNumber }}</td>
+              <td class="px-2 py-[8px] text-[#5b626d] whitespace-nowrap">{{ row.invoiceDate | date:'yyyy-MM-dd' }}</td>
+              <td class="px-2 py-[8px] text-center font-mono">{{ row.amountOutstanding | number:'1.2-2' }}</td>
+              <td class="px-2 py-[8px]">
+                <input type="number" step="0.01" min="0" [max]="row.amountOutstanding" [(ngModel)]="row.allocated" [ngModelOptions]="{standalone: true}"
+                  class="w-full px-2 py-[7px] border border-[#e3e6ea] rounded-[7px] text-[12.5px] font-mono text-center outline-none focus:border-primary transition" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="!loadingInvoices && !invoiceRows.length" class="p-8 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-circle-check text-[26px] block mb-2 opacity-40"></i>
+        لا توجد فواتير غير مسددة لهذا العميل — سيُسجَّل المبلغ كدفعة على الحساب
+      </div>
+
+      <!-- Live allocation summary -->
+      <div class="mt-[16px] grid grid-cols-1 sm:grid-cols-3 gap-[10px]">
+        <div class="bg-[#f3f4f7] rounded-[9px] p-[12px] text-center">
+          <div class="text-[16px] font-bold text-[#4b5563] font-mono">{{ form.value.amount || 0 | number:'1.2-2' }}</div>
+          <div class="text-[11px] text-muted mt-[2px]">المبلغ المستلَم</div>
+        </div>
+        <div class="bg-[#eef1fd] rounded-[9px] p-[12px] text-center">
+          <div class="text-[16px] font-bold text-[#5156be] font-mono">{{ totalAllocated | number:'1.2-2' }}</div>
+          <div class="text-[11px] text-muted mt-[2px]">موزَّع على الفواتير</div>
+        </div>
+        <div class="rounded-[9px] p-[12px] text-center" [ngClass]="isOverAllocated ? 'bg-[#fdeaea]' : 'bg-[#eaf7f1]'">
+          <div class="text-[16px] font-bold font-mono" [ngClass]="isOverAllocated ? 'text-danger' : 'text-[#0e9f6e]'">{{ remainderOnAccount | number:'1.2-2' }}</div>
+          <div class="text-[11px] mt-[2px]" [ngClass]="isOverAllocated ? 'text-danger' : 'text-muted'">
+            {{ isOverAllocated ? 'التوزيع أكبر من المبلغ المستلَم' : 'بدون ربط بفاتورة (على الحساب)' }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-[10px]">
+      <app-button variant="primary" icon="fa-solid fa-floppy-disk" (click)="submit()" [disabled]="saving">
+        {{ saving ? 'جارٍ الحفظ…' : 'تسجيل الاستلام' }}
+      </app-button>
+      <app-button variant="ghost" routerLink="/receive-payment">إلغاء</app-button>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

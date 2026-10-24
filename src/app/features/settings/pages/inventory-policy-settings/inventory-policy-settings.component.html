@@ -1,0 +1,477 @@
+<app-page-header
+  [breadcrumbs]="breadcrumbs"
+  title="سياسة الجرد وتكلفة المخزون"
+  icon="fa-solid fa-boxes-stacked"
+  subtitle="تحديد وضبط طريقة معالجة قيود المخزون وتكلفة البضاعة المباعة آلياً في النظام (جرد مستمر أو دوري)">
+  <div class="flex items-center gap-2">
+    <button
+      (click)="loadPolicy()"
+      [disabled]="loading || saving"
+      class="flex items-center gap-2 px-3.5 py-2 rounded-[9px] border border-line bg-white text-[#5b626d] text-[13px] font-semibold hover:bg-[#f3f4f7] transition disabled:opacity-50 cursor-pointer"
+      title="تحديث البيانات">
+      <i class="fa-solid fa-rotate-right text-[13px]" [class.fa-spin]="loading"></i>
+      <span>تحديث</span>
+    </button>
+  </div>
+</app-page-header>
+
+<div class="mt-6 flex flex-col gap-6">
+
+  <!-- Info Alert Banner -->
+  <div class="bg-[#eff6ff] border border-[#bfdbfe] rounded-[13px] p-4 flex items-start gap-3.5 text-[#1e40af] shadow-sm">
+    <span class="text-xl shrink-0 mt-0.5 text-[#2563eb]">
+      <i class="fa-solid fa-circle-info"></i>
+    </span>
+    <div class="flex-1">
+      <div class="font-bold text-[14px] leading-tight mb-1">تنبيه محاسبي هام (Important Accounting Policy Notice)</div>
+      <div class="text-[12.5px] leading-relaxed text-[#1e3a8a] opacity-95">
+        تغيير سياسة الجرد يؤثر حصرياً على <strong>الفواتير والعمليات المحاسبية الجديدة</strong> الصادرة بعد اعتماد التغيير.
+        <strong>لن يتم تعديل أو إعادة توليد القيود للفواتير السابقة بأثر رجعي</strong>، وذلك حفاظاً على ثبات السجلات المالية وسلامة موازين المراجعة المعتمدة.
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  <div *ngIf="successMessage" class="bg-[#f0fdf4] border border-[#bbf7d0] rounded-[13px] p-4 text-[#166534] flex items-center justify-between shadow-sm animate-pop">
+    <div class="flex items-center gap-3">
+      <span class="w-8 h-8 rounded-full bg-[#dcfce7] flex items-center justify-center text-[#16a34a] text-base shrink-0">
+        <i class="fa-solid fa-circle-check"></i>
+      </span>
+      <div>
+        <div class="font-bold text-[13.5px] leading-tight">تم الحفظ بنجاح</div>
+        <div class="text-[12px] opacity-90">{{ successMessage }}</div>
+      </div>
+    </div>
+    <button (click)="dismissSuccess()" class="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#dcfce7] text-[#166534] transition">
+      <i class="fa-solid fa-xmark text-[13px]"></i>
+    </button>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="error" class="bg-[#fef2f2] border border-[#fecaca] rounded-[13px] p-4 text-[#991b1b] flex items-center justify-between shadow-sm animate-pop">
+    <div class="flex items-center gap-3">
+      <span class="w-8 h-8 rounded-full bg-[#fee2e2] flex items-center justify-center text-[#dc2626] text-base shrink-0">
+        <i class="fa-solid fa-circle-exclamation"></i>
+      </span>
+      <div>
+        <div class="font-bold text-[13.5px] leading-tight">حدث خطأ</div>
+        <div class="text-[12px] opacity-90">{{ error }}</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button (click)="loadPolicy()" class="text-[12px] font-bold text-[#b91c1c] underline hover:text-[#7f1d1d]">إعادة المحاولة</button>
+      <button (click)="dismissError()" class="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#fee2e2] text-[#991b1b] transition">
+        <i class="fa-solid fa-xmark text-[13px]"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Active Policy Status Overview Card -->
+  <div class="bg-white border border-line rounded-[13px] p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div class="flex items-center gap-3.5">
+      <div class="w-12 h-12 rounded-[11px] bg-primary-soft text-primary flex items-center justify-center text-[20px] shrink-0 border border-primary-border/40">
+        <i class="fa-solid fa-sliders"></i>
+      </div>
+      <div>
+        <div class="text-[11.5px] text-muted font-bold">السياسة المعتمدة حالياً في النظام</div>
+        <div class="text-[16px] font-bold text-ink mt-0.5 flex items-center gap-2">
+          <ng-container *ngIf="loading">
+            <span class="inline-flex items-center gap-1.5 text-muted text-[13px]">
+              <i class="fa-solid fa-spinner fa-spin"></i> جاري قراءة السياسة الحالية...
+            </span>
+          </ng-container>
+          <ng-container *ngIf="!loading">
+            <span *ngIf="currentPolicy === PolicyType.Perpetual" class="inline-flex items-center gap-2">
+              <span>نظام الجرد المستمر (Perpetual Inventory)</span>
+              <span class="px-2 py-0.5 rounded-[6px] text-[11px] font-bold bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0]">
+                القيمة: 0 (مفعّل)
+              </span>
+            </span>
+            <span *ngIf="currentPolicy === PolicyType.Periodic" class="inline-flex items-center gap-2">
+              <span>نظام الجرد الدوري (Periodic Inventory)</span>
+              <span class="px-2 py-0.5 rounded-[6px] text-[11px] font-bold bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0]">
+                القيمة: 1 (مفعّل)
+              </span>
+            </span>
+            <span *ngIf="currentPolicy === null" class="text-muted text-[13px] font-normal">
+              لم يتم التحديد بعد
+            </span>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live indicator tag -->
+    <div *ngIf="!loading && currentPolicy !== null" class="flex items-center gap-2 text-[12px] font-semibold text-muted bg-[#f8f9fc] border border-line px-3 py-1.5 rounded-[8px]">
+      <span class="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-pulse"></span>
+      <span>النظام يعمل وفق هذه السياسة</span>
+    </div>
+  </div>
+
+  <!-- Loading Skeleton when fetching initial data -->
+  <div *ngIf="loading && currentPolicy === null" class="bg-white border border-line rounded-[13px] p-8 text-center shadow-sm">
+    <div class="w-12 h-12 rounded-full border-3 border-primary border-t-transparent animate-spin mx-auto mb-3"></div>
+    <div class="text-[14px] font-bold text-ink">جاري تحميل إعدادات سياسة الجرد...</div>
+    <div class="text-[12px] text-muted mt-1">يتم جلب البيانات الحالية من الخادم</div>
+  </div>
+
+  <!-- Policy Options Grid -->
+  <div *ngIf="!loading || currentPolicy !== null" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Option 1: Perpetual (جرد مستمر) -->
+    <div
+      (click)="selectPolicy(PolicyType.Perpetual)"
+      class="relative flex flex-col bg-white rounded-[14px] border-2 transition-all duration-200 cursor-pointer overflow-hidden p-6 hover:shadow-md"
+      [ngClass]="selectedPolicy === PolicyType.Perpetual
+        ? 'border-primary ring-2 ring-primary/20 shadow-md bg-gradient-to-b from-primary/[0.02] to-white'
+        : 'border-line hover:border-primary-border'">
+
+      <!-- Top Header Row -->
+      <div class="flex items-start justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3">
+          <!-- Radio circle -->
+          <div
+            class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition"
+            [ngClass]="selectedPolicy === PolicyType.Perpetual
+              ? 'border-primary bg-primary text-white'
+              : 'border-[#cfd4dc] bg-white'">
+            <i *ngIf="selectedPolicy === PolicyType.Perpetual" class="fa-solid fa-check text-[11px]"></i>
+          </div>
+
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[17px] font-bold text-ink">الجرد المستمر</span>
+              <span class="text-[13px] text-muted font-medium">(Perpetual)</span>
+              <span class="px-2 py-0.5 rounded-[6px] text-[11px] font-bold bg-[#f1f3fd] text-primary border border-primary-border/60">
+                القيمة: 0
+              </span>
+            </div>
+            <div class="text-[12px] text-muted mt-0.5 font-medium">تسجيل فوري لحركة المخزون وتكلفة المبيعات مع كل عملية</div>
+          </div>
+        </div>
+
+        <!-- Current badge -->
+        <span *ngIf="currentPolicy === PolicyType.Perpetual"
+          class="shrink-0 px-2.5 py-1 rounded-[7px] text-[11px] font-bold bg-[#dcfce7] text-[#15803d] border border-[#86efac]">
+          <i class="fa-solid fa-circle-check text-[10px] me-1"></i> السياسة الحالية
+        </span>
+      </div>
+
+      <!-- Logic Overview Points -->
+      <div class="space-y-2 mb-5 text-[12.5px] text-[#4b5563]">
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-check text-primary text-[12px] mt-1 shrink-0"></i>
+          <span>تحديث رصيد وتكلفة المخزون <strong>فورياً</strong> في حساب المخزون الرئيسي مع كل فاتورة بيع أو شراء.</span>
+        </div>
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-check text-primary text-[12px] mt-1 shrink-0"></i>
+          <span>يتم إنشاء قيد <strong>تكلفة البضاعة المباعة (COGS)</strong> آلياً عند ترحيل كل فاتورة مبيعات.</span>
+        </div>
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-check text-primary text-[12px] mt-1 shrink-0"></i>
+          <span>معرفة أرباح كل فاتورة وكميات المخزون اللحظية وقيمتها دون الحاجة للانتظار لنهاية الفترة.</span>
+        </div>
+      </div>
+
+      <!-- Accounting Journal Entries Box -->
+      <div class="mt-auto bg-[#fafbfc] border border-[#e8eaef] rounded-[11px] p-4">
+        <div class="text-[12px] font-bold text-[#1f2937] mb-3 flex items-center justify-between pb-2 border-b border-[#eceef2]">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-file-invoice-dollar text-primary text-[13px]"></i>
+            <span>القيود المحاسبية التلقائية (Accounting Entries)</span>
+          </span>
+          <span class="text-[11px] text-muted font-normal">جرد مستمر (0)</span>
+        </div>
+
+        <div class="space-y-3">
+          <!-- Purchase Entry -->
+          <div class="bg-white rounded-[8px] p-3 border border-[#edf0f5]">
+            <div class="text-[12px] font-bold text-[#374151] mb-2 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-[#10b981]"></span>
+              <span>1. عند تسجيل فاتورة شراء (On Purchase):</span>
+            </div>
+            <div class="space-y-1.5 text-[12px] ps-3.5 border-s-2 border-[#10b981]/30">
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-[#111827]">مدين (Dr): <strong class="text-primary font-bold">حـ/ المخزون</strong></span>
+                <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-primary-soft text-primary font-bold">1600</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-[#4b5563]">دائن (Cr): <strong class="text-[#374151] font-bold">حـ/ الموردين</strong></span>
+                <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#f3f4f6] text-[#4b5563] font-bold">2100</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sales Entry -->
+          <div class="bg-white rounded-[8px] p-3 border border-[#edf0f5]">
+            <div class="text-[12px] font-bold text-[#374151] mb-2 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-primary"></span>
+              <span>2. عند تسجيل فاتورة بيع (On Sale):</span>
+            </div>
+            <div class="space-y-2 ps-3.5 border-s-2 border-primary/30">
+              <!-- Revenue Part -->
+              <div class="space-y-1 text-[12px]">
+                <div class="text-[11px] font-bold text-muted">أ) قيد استحقاق الإيراد (Revenue Entry):</div>
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-[#111827]">مدين (Dr): العملاء / الصندوق / البنك</span>
+                  <span class="text-[11px] text-muted">حساب الطرف/الصندوق</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-[#4b5563]">دائن (Cr): <strong class="text-[#374151] font-bold">حـ/ الإيرادات</strong></span>
+                  <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#f3f4f6] text-[#4b5563] font-bold">4100</span>
+                </div>
+              </div>
+
+              <!-- COGS Part -->
+              <div class="pt-2 border-t border-[#f3f4f6] space-y-1 text-[12px]">
+                <div class="text-[11px] font-bold text-primary">ب) قيد تكلفة المخزون الفوري (COGS Entry):</div>
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-primary">مدين (Dr): <strong class="font-bold">حـ/ تكلفة البضاعة المباعة</strong></span>
+                  <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-primary-soft text-primary font-bold">5100</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-[#4b5563]">دائن (Cr): <strong class="text-[#374151] font-bold">حـ/ المخزون</strong></span>
+                  <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-primary-soft text-primary font-bold">1600</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Option 2: Periodic (جرد دوري) -->
+    <div
+      (click)="selectPolicy(PolicyType.Periodic)"
+      class="relative flex flex-col bg-white rounded-[14px] border-2 transition-all duration-200 cursor-pointer overflow-hidden p-6 hover:shadow-md"
+      [ngClass]="selectedPolicy === PolicyType.Periodic
+        ? 'border-primary ring-2 ring-primary/20 shadow-md bg-gradient-to-b from-primary/[0.02] to-white'
+        : 'border-line hover:border-primary-border'">
+
+      <!-- Top Header Row -->
+      <div class="flex items-start justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3">
+          <!-- Radio circle -->
+          <div
+            class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition"
+            [ngClass]="selectedPolicy === PolicyType.Periodic
+              ? 'border-primary bg-primary text-white'
+              : 'border-[#cfd4dc] bg-white'">
+            <i *ngIf="selectedPolicy === PolicyType.Periodic" class="fa-solid fa-check text-[11px]"></i>
+          </div>
+
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[17px] font-bold text-ink">الجرد الدوري</span>
+              <span class="text-[13px] text-muted font-medium">(Periodic)</span>
+              <span class="px-2 py-0.5 rounded-[6px] text-[11px] font-bold bg-[#f1f3fd] text-primary border border-primary-border/60">
+                القيمة: 1
+              </span>
+            </div>
+            <div class="text-[12px] text-muted mt-0.5 font-medium">تسجيل المشتريات بحساب وسيط واحتساب التكلفة نهاية الفترة المالية</div>
+          </div>
+        </div>
+
+        <!-- Current badge -->
+        <span *ngIf="currentPolicy === PolicyType.Periodic"
+          class="shrink-0 px-2.5 py-1 rounded-[7px] text-[11px] font-bold bg-[#dcfce7] text-[#15803d] border border-[#86efac]">
+          <i class="fa-solid fa-circle-check text-[10px] me-1"></i> السياسة الحالية
+        </span>
+      </div>
+
+      <!-- Logic Overview Points -->
+      <div class="space-y-2 mb-5 text-[12.5px] text-[#4b5563]">
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-check text-primary text-[12px] mt-1 shrink-0"></i>
+          <span>يتم إثبات فواتير الشراء في <strong>حساب المشتريات (5150)</strong> بدلاً من التأثير المباشر على حساب المخزون.</span>
+        </div>
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-check text-primary text-[12px] mt-1 shrink-0"></i>
+          <span><strong>لا يوجد قيد تكلفة لحظي (No COGS Entry)</strong> عند البيع؛ يُسجل قيد الإيراد فقط.</span>
+        </div>
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-check text-primary text-[12px] mt-1 shrink-0"></i>
+          <span>تُحتسب تكلفة البضاعة المباعة إجمالياً في نهاية الفترة عبر معادلة الجرد الفعلي للمستودع.</span>
+        </div>
+      </div>
+
+      <!-- Accounting Journal Entries Box -->
+      <div class="mt-auto bg-[#fafbfc] border border-[#e8eaef] rounded-[11px] p-4">
+        <div class="text-[12px] font-bold text-[#1f2937] mb-3 flex items-center justify-between pb-2 border-b border-[#eceef2]">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-file-invoice-dollar text-primary text-[13px]"></i>
+            <span>القيود المحاسبية التلقائية (Accounting Entries)</span>
+          </span>
+          <span class="text-[11px] text-muted font-normal">جرد دوري (1)</span>
+        </div>
+
+        <div class="space-y-3">
+          <!-- Purchase Entry -->
+          <div class="bg-white rounded-[8px] p-3 border border-[#edf0f5]">
+            <div class="text-[12px] font-bold text-[#374151] mb-2 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-[#10b981]"></span>
+              <span>1. عند تسجيل فاتورة شراء (On Purchase):</span>
+            </div>
+            <div class="space-y-1.5 text-[12px] ps-3.5 border-s-2 border-[#10b981]/30">
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-[#111827]">مدين (Dr): <strong class="text-primary font-bold">حـ/ المشتريات</strong></span>
+                <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-primary-soft text-primary font-bold">5150</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-[#4b5563]">دائن (Cr): <strong class="text-[#374151] font-bold">حـ/ الموردين</strong></span>
+                <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#f3f4f6] text-[#4b5563] font-bold">2100</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sales Entry -->
+          <div class="bg-white rounded-[8px] p-3 border border-[#edf0f5]">
+            <div class="text-[12px] font-bold text-[#374151] mb-2 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-primary"></span>
+              <span>2. عند تسجيل فاتورة بيع (On Sale):</span>
+            </div>
+            <div class="space-y-2 ps-3.5 border-s-2 border-primary/30">
+              <!-- Revenue Part -->
+              <div class="space-y-1 text-[12px]">
+                <div class="text-[11px] font-bold text-muted">أ) قيد استحقاق الإيراد (Revenue Entry):</div>
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-[#111827]">مدين (Dr): العملاء / الصندوق / البنك</span>
+                  <span class="text-[11px] text-muted">حساب الطرف/الصندوق</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-[#4b5563]">دائن (Cr): <strong class="text-[#374151] font-bold">حـ/ الإيرادات</strong></span>
+                  <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#f3f4f6] text-[#4b5563] font-bold">4100</span>
+                </div>
+              </div>
+
+              <!-- No COGS Notice -->
+              <div class="pt-2 border-t border-[#f3f4f6] bg-[#f8f9fc] -mx-3 -mb-3 p-2.5 rounded-b-[7px] text-[11.5px] text-[#475569]">
+                <div class="font-bold text-[#64748b] flex items-center gap-1.5 mb-1">
+                  <i class="fa-solid fa-ban text-[#94a3b8]"></i>
+                  <span>ب) قيد تكلفة المخزون (COGS):</span>
+                </div>
+                <div class="text-[11.5px] text-[#64748b] leading-relaxed">
+                  <strong>لا يتم إنشاء قيد تكلفة لحظي عند البيع</strong>. يتم احتساب تكلفة البضاعة المباعة في نهاية الفترة المالية من خلال قيد تسوية الجرد:
+                  <div class="mt-1 font-mono text-[11px] bg-white p-1 rounded border border-[#e2e8f0] text-center text-ink ltr-num">
+                    COGS = Beginning Inventory + Net Purchases - Ending Inventory
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Accounts Codes Reference Quick Card -->
+  <div class="bg-white border border-line rounded-[13px] p-5 shadow-sm">
+    <div class="text-[13.5px] font-bold text-[#1f2937] mb-3 flex items-center gap-2">
+      <i class="fa-solid fa-list-check text-primary"></i>
+      <span>دليل الحسابات المرتبطة بسياسات الجرد (Account Codes Reference)</span>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div class="bg-[#f8f9fc] border border-line rounded-[10px] p-3 flex flex-col gap-1">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-muted font-bold">حساب المخزون</span>
+          <span class="font-mono text-[12px] font-bold px-2 py-0.5 rounded bg-primary-soft text-primary">1600</span>
+        </div>
+        <div class="text-[13px] font-bold text-ink">Inventory</div>
+        <div class="text-[11px] text-[#6b7280]">أصول متداولة (مستمر)</div>
+      </div>
+
+      <div class="bg-[#f8f9fc] border border-line rounded-[10px] p-3 flex flex-col gap-1">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-muted font-bold">حساب الموردين</span>
+          <span class="font-mono text-[12px] font-bold px-2 py-0.5 rounded bg-[#f3f4f6] text-[#4b5563]">2100</span>
+        </div>
+        <div class="text-[13px] font-bold text-ink">Accounts Payable</div>
+        <div class="text-[11px] text-[#6b7280]">التزامات متداولة</div>
+      </div>
+
+      <div class="bg-[#f8f9fc] border border-line rounded-[10px] p-3 flex flex-col gap-1">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-muted font-bold">حساب الإيرادات</span>
+          <span class="font-mono text-[12px] font-bold px-2 py-0.5 rounded bg-[#f3f4f6] text-[#4b5563]">4100</span>
+        </div>
+        <div class="text-[13px] font-bold text-ink">Revenue</div>
+        <div class="text-[11px] text-[#6b7280]">إيرادات المبيعات</div>
+      </div>
+
+      <div class="bg-[#f8f9fc] border border-line rounded-[10px] p-3 flex flex-col gap-1">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-muted font-bold">تكلفة البضاعة المباعة</span>
+          <span class="font-mono text-[12px] font-bold px-2 py-0.5 rounded bg-primary-soft text-primary">5100</span>
+        </div>
+        <div class="text-[13px] font-bold text-ink">COGS</div>
+        <div class="text-[11px] text-[#6b7280]">مصروفات وتكلفة مبيعات</div>
+      </div>
+
+      <div class="bg-[#f8f9fc] border border-line rounded-[10px] p-3 flex flex-col gap-1">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-muted font-bold">حساب المشتريات</span>
+          <span class="font-mono text-[12px] font-bold px-2 py-0.5 rounded bg-[#eef2ff] text-[#4338ca]">5150</span>
+        </div>
+        <div class="text-[13px] font-bold text-ink">Purchases</div>
+        <div class="text-[11px] text-[#6b7280]">وسيط مشتريات (دوري)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Save & Action Card -->
+  <div class="sticky bottom-4 z-20 bg-white border border-line rounded-[13px] p-4 shadow-pop flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 animate-pop">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+        [ngClass]="isModified ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'">
+        <i class="fa-solid" [ngClass]="isModified ? 'fa-pen-to-square' : 'fa-check'"></i>
+      </div>
+      <div>
+        <div class="text-[13.5px] font-bold text-ink">
+          <span *ngIf="isModified">
+            توجد تعديلات غير محفوظة:
+            <span class="text-primary font-bold">
+              {{ selectedPolicy === PolicyType.Perpetual ? 'الجرد المستمر (0)' : 'الجرد الدوري (1)' }}
+            </span>
+          </span>
+          <span *ngIf="!isModified && currentPolicy !== null" class="text-[#059669]">
+            السياسة المحددة مطابقة للإعدادات الحالية في النظام
+          </span>
+          <span *ngIf="currentPolicy === null">
+            جاري قراءة إعدادات السياسة...
+          </span>
+        </div>
+        <div class="text-[11.5px] text-muted">
+          <span *ngIf="isModified">اضغط على زر حفظ لاعتماد السياسة الجديدة وتطبيقها على العمليات القادمة</span>
+          <span *ngIf="!isModified">لا توجد تغييرات معلقة للحفظ حالياً</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 justify-end">
+      <!-- Reset Button -->
+      <button
+        *ngIf="isModified"
+        type="button"
+        (click)="resetSelection()"
+        [disabled]="saving"
+        class="px-4 py-2 rounded-[9px] border border-line bg-white text-[#5b626d] text-[13px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+        إلغاء التعديل
+      </button>
+
+      <!-- Save Button with Purple Gradient -->
+      <button
+        type="button"
+        (click)="savePolicy()"
+        [disabled]="!isModified || saving || loading"
+        class="flex items-center justify-center gap-2 px-6 py-2.5 rounded-[9px] text-white text-[13.5px] font-bold shadow-sm transition cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed bg-gradient-to-r from-primary to-primary-dark hover:brightness-110 active:brightness-95">
+        <i *ngIf="saving" class="fa-solid fa-spinner fa-spin text-[14px]"></i>
+        <i *ngIf="!saving" class="fa-solid fa-floppy-disk text-[14px]"></i>
+        <span>{{ saving ? 'جاري حفظ السياسة...' : 'حفظ اعتماد السياسة' }}</span>
+      </button>
+    </div>
+  </div>
+
+</div>

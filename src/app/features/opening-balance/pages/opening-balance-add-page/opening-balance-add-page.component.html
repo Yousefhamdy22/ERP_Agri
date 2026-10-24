@@ -1,0 +1,588 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="اضافة رصيد افتتاحي"
+      icon="fa-solid fa-scale-unbalanced">
+    </app-page-header>
+
+    <!-- Context: branch + fiscal period -->
+    <div class="mb-[16px] bg-white border border-line rounded-[13px] p-[16px] shadow-sm">
+      <div class="flex flex-wrap gap-[10px] items-center">
+        <div class="flex items-center gap-[6px]">
+          <label class="text-[12px] text-muted">الفرع</label>
+          <app-select
+          [(ngModel)]="branchId"
+          [options]="[{value: '', label: '— اختر الفرع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="— اختر الفرع —"
+          (changed)="onBranchChange()"
+          [ngModelOptions]="{standalone:true}"
+          [searchable]="true"
+          />
+        </div>
+        <div class="flex items-center gap-[6px]">
+          <label class="text-[12px] text-muted">الفترة المالية</label>
+          <app-select
+          [(ngModel)]="fiscalPeriodId"
+          [options]="[{value: '', label: '— اختر الفترة المالية —'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode + ' — ' + (p.status === 'Open' ? 'مفتوحة' : 'مغلقة')})))"
+          placeholder="— اختر الفترة المالية —"
+          [ngModelOptions]="{standalone:true}"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Type selector -->
+    <div class="mb-[16px] flex flex-wrap gap-[8px]">
+      <button *ngFor="let t of typeOptions" (click)="setType(t.value)"
+        class="flex items-center gap-[8px] px-[16px] py-[10px] rounded-[10px] border text-[13px] font-semibold transition cursor-pointer"
+        [ngClass]="type === t.value ? 'bg-primary text-white border-primary' : 'bg-white text-[#5b626d] border-line hover:bg-[#f3f4f7]'">
+        <i [class]="t.icon"></i> {{ t.label }}
+      </button>
+    </div>
+
+    <div class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm">
+
+      <!-- Manual -->
+      <form *ngIf="type === 'Manual'" [formGroup]="manualForm" (ngSubmit)="submit()">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+          <div class="col-span-1 md:col-span-2 group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الحساب <span class="text-danger">*</span></label>
+            <app-select
+          formControlName="accountId"
+          [options]="[{value: '', label: accountsLoading ? 'جارٍ تحميل الحسابات…' : '— اختر الحساب —'}].concat(accounts.map(a => ({value: a.id, label: a.accountCode + ' — ' + (a.nameAr || a.name)})))"
+          [placeholder]="accountsLoading ? 'جارٍ تحميل الحسابات…' : '— اختر الحساب —'"
+          [disabled]="accountsLoading"
+          [searchable]="true"
+          />
+            <div *ngIf="!accountsLoading && !accounts.length" class="text-[11px] text-danger mt-[4px]">تعذّر تحميل قائمة الحسابات</div>
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الرصيد <span class="text-danger">*</span></label>
+            <input type="number" step="0.01" min="0.01" formControlName="balance"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+              [ngClass]="invalid('manual','balance') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الجانب <span class="text-danger">*</span></label>
+            <div class="flex gap-[16px] mt-[10px]">
+              <label *ngFor="let s of sideOptions" class="flex items-center gap-[7px] cursor-pointer">
+                <input type="radio" formControlName="side" [value]="s.value" class="w-[16px] h-[16px] accent-primary cursor-pointer" />
+                <span class="text-[13.5px]">{{ s.label }}</span>
+              </label>
+            </div>
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ الرصيد <span class="text-danger">*</span></label>
+            <input type="date" formControlName="balanceDate"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalid('manual','balanceDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الوصف <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span></label>
+            <input formControlName="description" maxlength="255" placeholder="وصف مختصر…"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+          <div class="col-span-1 md:col-span-2 group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">ملاحظات <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span></label>
+            <textarea formControlName="notes" rows="2" placeholder="ملاحظات إضافية…"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary resize-none transition"></textarea>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+          <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">{{ saving ? 'جارٍ الحفظ…' : 'حفظ الرصيد الافتتاحي' }}</app-button>
+          <app-button variant="ghost" routerLink="/opening-balance/manage">إلغاء</app-button>
+        </div>
+      </form>
+
+      <!-- Bank -->
+      <form *ngIf="type === 'Bank'" [formGroup]="bankForm" (ngSubmit)="submit()">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">اسم البنك <span class="text-danger">*</span></label>
+            <input formControlName="bankName" maxlength="150"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalid('bank','bankName') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">رقم الحساب البنكي <span class="text-danger">*</span></label>
+            <input formControlName="bankAccountNumber" maxlength="60"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+              [ngClass]="invalid('bank','bankAccountNumber') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">كود الحساب البنكي <span class="text-danger">*</span></label>
+            <input formControlName="bankAccountCode" maxlength="30"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+              [ngClass]="invalid('bank','bankAccountCode') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">العملة <span class="text-danger">*</span></label>
+            <app-select formControlName="currency" [options]="currencies.map(c => ({value: c, label: c}))" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الرصيد <span class="text-danger">*</span></label>
+            <input type="number" step="0.01" min="0.01" formControlName="balance"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+              [ngClass]="invalid('bank','balance') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ الرصيد <span class="text-danger">*</span></label>
+            <input type="date" formControlName="balanceDate"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalid('bank','balanceDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+          <div class="col-span-1 md:col-span-2 group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">ملاحظات <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span></label>
+            <textarea formControlName="notes" rows="2" class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary resize-none transition"></textarea>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+          <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">{{ saving ? 'جارٍ الحفظ…' : 'حفظ الرصيد الافتتاحي' }}</app-button>
+          <app-button variant="ghost" routerLink="/opening-balance/manage">إلغاء</app-button>
+        </div>
+      </form>
+
+      <!-- Supplier / Customer -->
+      <div *ngIf="type === 'Supplier' || type === 'Customer'">
+        <!-- Workflow Sub-tabs -->
+        <div class="flex border-b border-[#e3e6ea] mb-[20px]">
+          <button type="button" (click)="partyImportWorkflow = 'single'"
+            class="px-4 py-2 text-[13.5px] font-semibold transition border-b-2 outline-none cursor-pointer"
+            [ngClass]="partyImportWorkflow === 'single' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-ink'">
+            رصيد فردي
+          </button>
+          <button type="button" (click)="partyImportWorkflow = 'bulk'"
+            class="px-4 py-2 text-[13.5px] font-semibold transition border-b-2 outline-none cursor-pointer"
+            [ngClass]="partyImportWorkflow === 'bulk' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-ink'">
+            استيراد جماعي (إكسيل)
+          </button>
+        </div>
+
+        <!-- Single party form -->
+        <form *ngIf="partyImportWorkflow === 'single'" [formGroup]="partyForm" (ngSubmit)="submit()">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+            <div class="col-span-1 md:col-span-2 group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">{{ partyLabel }} <span class="text-danger">*</span></label>
+              <app-select
+          formControlName="partyId"
+          [options]="[{value: '', label: '— اختر ' + partyLabel + ' —'}].concat(partyOptions.map(p => ({value: p.id, label: p.name})))"
+          placeholder="— اختر {{ partyLabel }} —"
+          />
+            </div>
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الرصيد <span class="text-danger">*</span></label>
+              <input type="number" step="0.01" min="0.01" formControlName="balance"
+                class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+                [ngClass]="invalid('party','balance') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            </div>
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الجانب <span class="text-danger">*</span></label>
+              <div class="flex gap-[16px] mt-[10px]">
+                <label *ngFor="let s of sideOptions" class="flex items-center gap-[7px] cursor-pointer">
+                  <input type="radio" formControlName="side" [value]="s.value" class="w-[16px] h-[16px] accent-primary cursor-pointer" />
+                  <span class="text-[13.5px]">{{ s.label }}</span>
+                </label>
+              </div>
+            </div>
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ الرصيد <span class="text-danger">*</span></label>
+              <input type="date" formControlName="balanceDate"
+                class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+                [ngClass]="invalid('party','balanceDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            </div>
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">ملاحظات <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span></label>
+              <input formControlName="notes" maxlength="255" class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+            <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">{{ saving ? 'جارٍ الحفظ…' : 'حفظ الرصيد الافتتاحي' }}</app-button>
+            <app-button variant="ghost" routerLink="/opening-balance/manage">إلغاء</app-button>
+          </div>
+        </form>
+
+        <!-- Bulk party import -->
+        <div *ngIf="partyImportWorkflow === 'bulk'" class="space-y-[18px]">
+
+          <!-- 1) Setup & file (hidden once results are shown) -->
+          <ng-container *ngIf="!partyImportResult">
+            <div class="flex flex-wrap gap-[10px] items-center justify-between pb-[14px] border-b border-[#f0f1f4]">
+              <div class="text-[13px] font-semibold text-[#374151]">استيراد أرصدة {{ partyLabel }} افتتاحية عبر Excel</div>
+              <button type="button" (click)="downloadPartyImportTemplate()"
+                class="flex items-center gap-[6px] px-[12px] py-[8px] rounded-[9px] border border-[#e3e6ea] bg-white text-[#4b5563] text-[12px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer">
+                <i class="fa-solid fa-download text-primary"></i> تحميل نموذج الإدخال
+              </button>
+            </div>
+
+            <div *ngIf="!branchId || !fiscalPeriodId" class="bg-[#fdf6e3] border border-[#f0dca0] text-[#8a6d1a] rounded-[10px] px-[14px] py-[10px] text-[12.5px] flex items-center gap-[8px]">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              اختر الفرع والفترة المالية أولاً من أعلى الصفحة قبل الاستيراد.
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-[20px] gap-y-[18px]">
+              <div class="group">
+                <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الفرع</label>
+                <div class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] bg-[#fafbfc] text-ink font-semibold">{{ selectedBranchLabel }}</div>
+              </div>
+              <div class="group">
+                <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الفترة المالية</label>
+                <div class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] bg-[#fafbfc] text-ink font-semibold">{{ selectedFiscalPeriodLabel }}</div>
+              </div>
+              <div class="group">
+                <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ الرصيد الافتتاحي <span class="text-danger">*</span></label>
+                <input type="date" [(ngModel)]="partyImportBalanceDate" [ngModelOptions]="{standalone:true}"
+                  class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+              </div>
+            </div>
+
+            <!-- 2) Drag & drop file zone -->
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">ملف Excel للاستيراد <span class="text-danger">*</span></label>
+              <div class="border-2 border-dashed rounded-[13px] p-[24px] text-center transition relative cursor-pointer"
+                (drop)="onPartyImportDrop($event)" (dragover)="onPartyImportDragOver($event)" (dragleave)="onPartyImportDragLeave()"
+                [ngClass]="partyImportDragging ? 'border-primary bg-primary-soft' : (partyImportFile ? 'border-[#e3e6ea] bg-[#fafbfc]' : 'border-[#e3e6ea] bg-white hover:border-primary')">
+                <input type="file" (change)="onPartyImportFileSelected($event)" accept=".xlsx,.xls" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                <i class="fa-solid fa-file-excel text-primary text-[32px] mb-[8px]"></i>
+                <div class="text-[13px] font-semibold text-[#374151]">
+                  {{ partyImportFile ? partyImportFile.name : 'اسحب ملف Excel هنا أو اضغط للتصفح (xlsx أو xls)' }}
+                </div>
+                <div *ngIf="partyImportFile" class="text-[11px] text-muted mt-[4px] font-mono">
+                  {{ partyImportFile.size | number }} bytes
+                </div>
+              </div>
+              <button *ngIf="partyImportFile" type="button" (click)="removePartyImportFile()" [disabled]="partyImporting"
+                class="text-[11.5px] text-danger hover:underline bg-transparent border-0 cursor-pointer mt-[6px] disabled:opacity-50">
+                <i class="fa-solid fa-xmark"></i> إزالة الملف
+              </button>
+            </div>
+
+            <div class="flex flex-wrap gap-[10px] pt-[16px] border-t border-[#f0f1f4]">
+              <button type="button" (click)="submitPartyImport()" [disabled]="partyImporting || !partyImportFile || !partyImportMetaComplete"
+                class="px-4 py-[10px] rounded-[9px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-dark transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa-solid fa-upload"></i> {{ partyImporting ? 'جارٍ الاستيراد…' : 'استيراد' }}
+              </button>
+              <app-button variant="ghost" routerLink="/opening-balance/manage" [disabled]="partyImporting">إلغاء</app-button>
+            </div>
+          </ng-container>
+
+          <!-- 3) Results dashboard -->
+          <ng-container *ngIf="partyImportResult as res">
+
+            <div *ngIf="res.errorCount > 0" class="bg-[#fdf6e3] border border-[#f0dca0] text-[#8a6d1a] rounded-[10px] px-[14px] py-[11px] text-[12.5px] flex items-start gap-[8px]">
+              <i class="fa-solid fa-triangle-exclamation mt-[1px]"></i>
+              <span>
+                اكتمل الاستيراد بوجود <strong>{{ res.errorCount }}</strong> خطأ. تم استيراد الصفوف الصحيحة بنجاح — راجع سجل الأخطاء أدناه لمعالجة الصفوف الفاشلة وإعادة استيرادها.
+              </span>
+            </div>
+
+            <!-- Summary cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-[12px]">
+              <div class="bg-[#f9fafb] border border-[#e3e6ea] rounded-[11px] p-[14px] text-center">
+                <span class="text-[11.5px] text-muted block mb-[3px]">عدد الصفوف الإجمالي</span>
+                <span class="font-bold text-[18px] text-[#2b2f38]">{{ res.totalRows }}</span>
+              </div>
+              <div class="bg-white border border-[#e3e6ea] rounded-[11px] p-[14px]">
+                <div class="flex items-center justify-between text-[11.5px] mb-[6px]">
+                  <span class="text-[#0e9f6e] font-semibold">{{ res.successCount }} ناجحة</span>
+                  <span class="text-danger font-semibold">{{ res.errorCount }} فاشلة</span>
+                </div>
+                <div class="w-full h-[8px] rounded-full bg-[#fdeaea] overflow-hidden">
+                  <div class="h-full bg-[#0e9f6e] transition-all" [style.width.%]="partyImportSuccessRatio"></div>
+                </div>
+              </div>
+              <div class="bg-[#eef0fb] border border-[#c5c7e8] rounded-[11px] p-[14px] text-center">
+                <span class="text-[11.5px] text-primary block mb-[3px]">إجمالي مدين / دائن</span>
+                <span class="font-bold text-[13.5px] text-primary">{{ res.totalDebitValue | number:'1.2-2' }} / {{ res.totalCreditValue | number:'1.2-2' }}</span>
+              </div>
+              <div class="rounded-[11px] p-[14px] text-center flex flex-col items-center justify-center"
+                [ngClass]="res.journalNumber ? 'bg-[#eaf7f1] border border-[#d7f0e3]' : 'bg-[#f9fafb] border border-[#e3e6ea]'">
+                <span class="text-[11.5px] block mb-[3px]" [ngClass]="res.journalNumber ? 'text-[#0e9f6e]' : 'text-muted'">القيد المحاسبي</span>
+                <a *ngIf="res.journalNumber" routerLink="/manual-journal" class="font-bold text-[14px] text-[#0e9f6e] hover:underline font-mono">
+                  <i class="fa-solid fa-file-invoice"></i> {{ res.journalNumber }}
+                </a>
+                <span *ngIf="!res.journalNumber" class="text-[13px] text-muted">—</span>
+              </div>
+            </div>
+
+            <!-- Filter toggle -->
+            <div class="flex items-center gap-[8px]">
+              <button type="button" (click)="partyImportResultFilter = 'all'"
+                class="px-3 py-[7px] rounded-[8px] text-[12px] font-semibold border transition cursor-pointer"
+                [ngClass]="partyImportResultFilter === 'all' ? 'bg-primary text-white border-primary' : 'bg-white text-[#5b626d] border-line hover:bg-[#f3f4f7]'">
+                الكل ({{ res.totalRows }})
+              </button>
+              <button type="button" (click)="partyImportResultFilter = 'success'"
+                class="px-3 py-[7px] rounded-[8px] text-[12px] font-semibold border transition cursor-pointer"
+                [ngClass]="partyImportResultFilter === 'success' ? 'bg-[#0e9f6e] text-white border-[#0e9f6e]' : 'bg-white text-[#5b626d] border-line hover:bg-[#f3f4f7]'">
+                الناجحة فقط ({{ res.successCount }})
+              </button>
+              <button type="button" (click)="partyImportResultFilter = 'error'"
+                class="px-3 py-[7px] rounded-[8px] text-[12px] font-semibold border transition cursor-pointer"
+                [ngClass]="partyImportResultFilter === 'error' ? 'bg-danger text-white border-danger' : 'bg-white text-[#5b626d] border-line hover:bg-[#f3f4f7]'">
+                الأخطاء فقط ({{ res.errorCount }})
+              </button>
+            </div>
+
+            <!-- Results table -->
+            <div class="rounded-[9px] overflow-hidden border border-[#e3e6ea]">
+              <div class="overflow-x-auto max-h-[360px] overflow-y-auto">
+                <table class="w-full text-[13px] min-w-[560px]">
+                  <thead>
+                    <tr class="bg-[#fafbfc] text-[11.5px] text-muted border-b border-[#e3e6ea] sticky top-0">
+                      <th class="px-[12px] py-[8px] text-center w-[8%]">الصف</th>
+                      <th class="px-[12px] py-[8px] text-right w-[28%]">اسم الطرف</th>
+                      <th class="px-[12px] py-[8px] text-center w-[16%]">المبلغ</th>
+                      <th class="px-[12px] py-[8px] text-center w-[14%]">الجهة</th>
+                      <th class="px-[12px] py-[8px] text-center w-[34%]">الحالة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let r of filteredPartyImportLines" class="border-t border-[#f0f1f4]"
+                      [ngClass]="!r.isSuccess ? 'bg-[#fdf3f3]' : 'hover:bg-[#fafbfc]'">
+                      <td class="px-[12px] py-[8px] text-center text-muted font-mono font-bold">{{ r.rowNumber }}</td>
+                      <td class="px-[12px] py-[8px] font-semibold truncate" [title]="r.partyName">{{ r.partyName }}</td>
+                      <td class="px-[12px] py-[8px] text-center font-mono">{{ r.amount | number:'1.2-2' }}</td>
+                      <td class="px-[12px] py-[8px] text-center">{{ r.side === 'Debit' ? 'مدين' : 'دائن' }}</td>
+                      <td class="px-[12px] py-[8px] text-center">
+                        <span *ngIf="r.isSuccess" class="inline-flex items-center gap-[4px] text-[#0e9f6e] text-[11.5px] font-semibold">
+                          <i class="fa-solid fa-circle-check"></i> تم بنجاح
+                        </span>
+                        <div *ngIf="!r.isSuccess">
+                          <span class="inline-flex items-center gap-[4px] text-danger text-[11.5px] font-semibold">
+                            <i class="fa-solid fa-circle-xmark"></i> فشل
+                          </span>
+                          <div class="text-[11px] text-danger mt-[2px]">{{ r.errorMessage || 'خطأ غير محدَّد السبب' }}</div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr *ngIf="!filteredPartyImportLines.length">
+                      <td colspan="5" class="px-[12px] py-[20px] text-center text-muted text-[12.5px]">لا توجد صفوف مطابقة لهذا الفلتر</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-[10px] pt-[4px]">
+              <button type="button" (click)="removePartyImportFile()"
+                class="px-4 py-[10px] rounded-[9px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-dark transition cursor-pointer">
+                <i class="fa-solid fa-file-excel"></i> استيراد ملف آخر
+              </button>
+              <a routerLink="/opening-balance/manage"
+                class="px-4 py-[10px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer no-underline">
+                الذهاب لإدارة الأرصدة الافتتاحية
+              </a>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- Inventory -->
+      <div *ngIf="type === 'Inventory'">
+        <!-- Workflow Sub-tabs -->
+        <div class="flex border-b border-[#e3e6ea] mb-[20px]">
+          <button type="button" (click)="inventoryWorkflow = 'single'"
+            class="px-4 py-2 text-[13.5px] font-semibold transition border-b-2 outline-none cursor-pointer"
+            [ngClass]="inventoryWorkflow === 'single' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-ink'">
+            صنف فردي
+          </button>
+          <button type="button" (click)="inventoryWorkflow = 'bulk'"
+            class="px-4 py-2 text-[13.5px] font-semibold transition border-b-2 outline-none cursor-pointer"
+            [ngClass]="inventoryWorkflow === 'bulk' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-ink'">
+            استيراد جماعي (إكسيل)
+          </button>
+        </div>
+
+        <!-- Single Item Form -->
+        <form *ngIf="inventoryWorkflow === 'single'" [formGroup]="inventoryForm" (ngSubmit)="submit()">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الصنف <span class="text-danger">*</span></label>
+              <app-product-search-select formControlName="productId"
+                [invalid]="invalid('inventory','productId')"
+                priceField="cost"
+                (productPicked)="onProductPicked($event)">
+              </app-product-search-select>
+            </div>
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">المخزن <span class="text-danger">*</span></label>
+              <app-select
+          formControlName="warehouseId"
+          [options]="[{value: '', label: '— اختر المخزن —'}].concat(warehouses.map(w => ({value: w.warehouseId, label: w.nameAr || w.name || ''})))"
+          placeholder="— اختر المخزن —"
+          [searchable]="true"
+          />
+            </div>
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الكمية <span class="text-danger">*</span></label>
+              <input type="number" step="0.0001" min="0.0001" formControlName="quantity"
+                class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+                [ngClass]="invalid('inventory','quantity') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            </div>
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">سعر الوحدة <span class="text-danger">*</span></label>
+              <input type="number" step="0.01" min="0.01" formControlName="unitPrice"
+                class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+                [ngClass]="invalid('inventory','unitPrice') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            </div>
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">القيمة الإجمالية</label>
+              <div class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono font-bold bg-[#fafbfc] text-primary-text">
+                {{ inventoryTotalValue | number:'1.2-2' }}
+              </div>
+            </div>
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ الرصيد <span class="text-danger">*</span></label>
+              <input type="date" formControlName="balanceDate"
+                class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+                [ngClass]="invalid('inventory','balanceDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            </div>
+            <div class="col-span-1 md:col-span-2 group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">ملاحظات <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span></label>
+              <textarea formControlName="notes" rows="2" class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary resize-none transition"></textarea>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+            <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">{{ saving ? 'جارٍ الحفظ…' : 'حفظ الرصيد الافتتاحي' }}</app-button>
+            <app-button variant="ghost" routerLink="/opening-balance/manage">إلغاء</app-button>
+          </div>
+        </form>
+
+        <!-- Bulk Import Form -->
+        <div *ngIf="inventoryWorkflow === 'bulk'" class="space-y-[18px]">
+          <div class="flex flex-wrap gap-[10px] items-center justify-between pb-[14px] border-b border-[#f0f1f4]">
+            <div class="text-[13px] font-semibold text-[#374151]">استيراد الأرصدة الافتتاحية للمخزون عبر Excel</div>
+            <button type="button" (click)="downloadTemplate()"
+              class="flex items-center gap-[6px] px-[12px] py-[8px] rounded-[9px] border border-[#e3e6ea] bg-white text-[#4b5563] text-[12px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer">
+              <i class="fa-solid fa-download text-primary"></i> تحميل القالب الفارغ
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">المخزن <span class="text-danger">*</span></label>
+              <app-select
+          [options]="[{value: '', label: '— اختر المخزن —'}].concat(warehouses.map(w => ({value: w.warehouseId, label: w.nameAr || w.name || ''})))"
+          placeholder="— اختر المخزن —"
+          [searchable]="true"
+          />
+              <div class="text-[11px] text-muted mt-[4px]">كل أصناف الملف تُستورَد لهذا المخزن — لا يوجد عمود مخزن داخل الملف نفسه.</div>
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ الرصيد الافتتاحي <span class="text-danger">*</span></label>
+              <input type="date" [formControl]="$any(inventoryForm.get('balanceDate'))"
+                class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+            </div>
+
+            <div class="group md:col-span-2">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">ملف Excel للاستيراد <span class="text-danger">*</span></label>
+              <div class="border-2 border-dashed border-[#e3e6ea] rounded-[13px] p-[20px] text-center hover:border-primary transition relative cursor-pointer"
+                [ngClass]="importFile ? 'bg-[#fafbfc]' : 'bg-white'">
+                <input type="file" (change)="onExcelFileSelected($event)" accept=".xlsx" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                <i class="fa-solid fa-file-excel text-primary text-[32px] mb-[8px]"></i>
+                <div class="text-[13px] font-semibold text-[#374151]">
+                  {{ importFile ? importFile.name : 'اسحب ملف Excel هنا أو اضغط للتصفح' }}
+                </div>
+                <div *ngIf="importFile" class="text-[11px] text-muted mt-[4px] font-mono">
+                  {{ importFile.size | number }} bytes
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview & Validation -->
+          <div *ngIf="importPreviewLoading" class="p-8 text-center text-muted">
+            <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-2"></i>
+            جارٍ تحليل ملف Excel والتحقق من صحة البيانات…
+          </div>
+
+          <div *ngIf="importFile && !importPreviewLoading" class="space-y-[16px]">
+            <!-- Results Summary -->
+            <div class="bg-[#f9fafb] border border-[#e3e6ea] rounded-[11px] p-[16px] grid grid-cols-2 md:grid-cols-4 gap-[12px] text-center">
+              <div>
+                <span class="text-[11.5px] text-muted block mb-[3px]">إجمالي الصفوف</span>
+                <span class="font-bold text-[15px] text-[#2b2f38]">{{ importTotalRows }}</span>
+              </div>
+              <div>
+                <span class="text-[11.5px] text-[#0e9f6e] block mb-[3px]">جاهز للاستيراد</span>
+                <span class="font-bold text-[15px] text-[#0e9f6e]">{{ importSuccessCount }}</span>
+              </div>
+              <div>
+                <span class="text-[11.5px] text-danger block mb-[3px]">صفوف بها أخطاء</span>
+                <span class="font-bold text-[15px] text-danger">{{ importErrorCount }}</span>
+              </div>
+              <div>
+                <span class="text-[11.5px] text-primary block mb-[3px]">إجمالي القيمة التقديرية</span>
+                <span class="font-bold text-[15px] text-primary">{{ importTotalValue | number:'1.2-2' }} EGP</span>
+              </div>
+            </div>
+
+            <!-- Preview List -->
+            <div class="rounded-[9px] overflow-hidden border border-[#e3e6ea]">
+              <div class="overflow-x-auto max-h-[300px] overflow-y-auto">
+                <table class="w-full text-[13px] min-w-[640px]">
+                  <thead>
+                    <tr class="bg-[#fafbfc] text-[11.5px] text-muted border-b border-[#e3e6ea]">
+                      <th class="px-[10px] py-[8px] text-center w-[6%]">الصف</th>
+                      <th class="px-[10px] py-[8px] text-right w-[18%]">رمز الصنف (SKU)</th>
+                      <th class="px-[10px] py-[8px] text-center w-[11%]">الكمية</th>
+                      <th class="px-[10px] py-[8px] text-center w-[13%]">سعر التكلفة</th>
+                      <th class="px-[10px] py-[8px] text-center w-[14%]">رقم التشغيلة</th>
+                      <th class="px-[10px] py-[8px] text-center w-[13%]">تاريخ الإنتاج</th>
+                      <th class="px-[10px] py-[8px] text-center w-[13%]">تاريخ الصلاحية</th>
+                      <th class="px-[10px] py-[8px] text-center w-[12%]">الحالة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let r of importRows" class="border-t border-[#f0f1f4] hover:bg-[#fafbfc]"
+                      [ngClass]="!r.isSuccess ? 'bg-[#fdf3f3]' : ''">
+                      <td class="px-[10px] py-[8px] text-center text-muted font-mono font-bold">{{ r.rowNumber }}</td>
+                      <td class="px-[10px] py-[8px] font-mono truncate" [title]="r.productCode">{{ r.productCode }}</td>
+                      <td class="px-[10px] py-[8px] text-center font-mono font-bold">{{ r.quantity }}</td>
+                      <td class="px-[10px] py-[8px] text-center font-mono">{{ r.unitPrice | number:'1.2-2' }}</td>
+                      <td class="px-[10px] py-[8px] text-center font-mono text-muted text-[11.5px]">{{ r.batchNumber }}</td>
+                      <td class="px-[10px] py-[8px] text-center font-mono text-muted text-[11.5px]">{{ r.productionDate }}</td>
+                      <td class="px-[10px] py-[8px] text-center font-mono text-[11.5px] font-semibold text-[#b91c1c]">{{ r.expiryDate }}</td>
+                      <td class="px-[10px] py-[8px]">
+                        <span *ngIf="r.isSuccess" class="text-[#0e9f6e] text-[11.5px] font-semibold flex items-center gap-[4px] justify-center">
+                          <i class="fa-solid fa-circle-check"></i> جاهز
+                        </span>
+                        <span *ngIf="!r.isSuccess" class="text-danger text-[11.5px] font-semibold flex items-center gap-[4px] justify-center" [title]="r.errorMessage">
+                          <i class="fa-solid fa-circle-xmark"></i> {{ r.errorMessage }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+            <button type="button" (click)="importConfirmed()" [disabled]="importing || !importFile || importHasError"
+              class="px-4 py-[9px] rounded-[9px] bg-primary text-white text-[13.5px] hover:bg-primary-dark transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+              <i class="fa-solid fa-circle-check"></i> {{ importing ? 'جارٍ الاستيراد…' : 'تأكيد الاستيراد' }}
+            </button>
+            <button type="button" *ngIf="importFile" (click)="removeImportFile()" [disabled]="importing"
+              class="px-4 py-[9px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+              إلغاء الملف
+            </button>
+            <app-button variant="ghost" routerLink="/opening-balance/manage" [disabled]="importing">إلغاء</app-button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

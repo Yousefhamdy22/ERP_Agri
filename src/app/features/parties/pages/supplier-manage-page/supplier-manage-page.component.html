@@ -1,0 +1,118 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="ادارة الموردين"
+      icon="fa-solid fa-truck-ramp-box"
+      [subtitle]="'إجمالي: ' + suppliers.length + ' مورد'">
+    </app-page-header>
+
+    <!-- Search bar -->
+    <div class="mb-[16px]">
+      <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[10px] w-full sm:w-80 shadow-sm">
+        <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+        <input [(ngModel)]="search" placeholder="بحث بالاسم أو الهاتف…"
+          class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+        <button *ngIf="search" (click)="search = ''"
+          class="text-[#a3a8b2] hover:text-ink bg-transparent border-0 cursor-pointer text-[13px]">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[13.5px] min-w-[640px]">
+        <thead>
+          <tr class="bg-primary text-white text-[12px]">
+            <th class="px-[16px] py-[13px] text-right font-semibold w-[40px]">#</th>
+            <th class="px-[16px] py-[13px] text-right font-semibold">الاسم</th>
+            <th class="px-3 py-[13px] text-right font-semibold">الهاتف</th>
+            <th class="px-3 py-[13px] text-center font-semibold">الرصيد الحالي</th>
+            <th class="px-3 py-[13px] text-center font-semibold w-[90px]">الحالة</th>
+            <th class="w-[50px]"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of filtered; let i = index"
+            class="border-t border-[#f1f2f4] hover:bg-[#fafbfc] transition">
+            <td class="px-[16px] py-[13px] text-muted text-[12px]">{{ i + 1 }}</td>
+            <td class="px-[16px] py-[13px] font-semibold">{{ s.name }}</td>
+            <td class="px-3 py-[13px] text-[#5b626d]">{{ s.phone || '—' }}</td>
+            <td class="px-3 py-[13px] text-center text-[#5b626d]">{{ s.currentBalance | number:'1.2-2' }}</td>
+            <td class="px-3 py-[13px] text-center">
+              <span class="px-2 py-[3px] rounded-full text-[11px] font-semibold"
+                [ngClass]="s.isActive ? 'bg-[#eaf7f1] text-[#0e9f6e]' : 'bg-[#fdeaea] text-danger'">
+                {{ s.isActive ? 'نشط' : 'غير نشط' }}
+              </span>
+            </td>
+            <td class="px-3 py-[13px]">
+              <div class="flex items-center justify-center gap-1.5">
+                <button
+                  [routerLink]="['/parties/suppliers/add', s.id]"
+                  class="w-7 h-7 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[12px] cursor-pointer"
+                  title="تعديل">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button
+                  (click)="confirmDelete(s)"
+                  class="w-7 h-7 rounded-[7px] border border-[#e3e6ea] bg-white text-danger hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition text-[12px] cursor-pointer"
+                  title="حذف">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div *ngIf="loading" class="p-14 text-center text-muted">
+        <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+        جارٍ تحميل الموردين…
+      </div>
+      <div *ngIf="!loading && suppliers.length === 0" class="p-14 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-truck-ramp-box text-[30px] block mb-3 opacity-40"></i>
+        لا يوجد موردون مسجلون بعد.
+        <div class="mt-3">
+          <a routerLink="/parties/suppliers/add" class="text-primary-text text-[13px] font-semibold hover:underline">
+            <i class="fa-solid fa-plus text-[11px]"></i> اضافة أول مورد
+          </a>
+        </div>
+      </div>
+      <div *ngIf="!loading && suppliers.length > 0 && filtered.length === 0" class="p-14 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-magnifying-glass text-[26px] block mb-3 opacity-40"></i>
+        لا توجد نتائج للبحث عن "<b>{{ search }}</b>"
+      </div>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>
+
+<!-- Delete confirmation -->
+<div *ngIf="showDeleteModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" (click)="closeDelete()">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[380px] shadow-[0_20px_60px_rgba(0,0,0,.18)] p-[22px] text-center" (click)="$event.stopPropagation()">
+    <i class="fa-solid fa-triangle-exclamation text-red-500 text-[32px] block mb-[12px]"></i>
+    <div class="text-[15px] font-bold mb-[8px]">حذف المورد</div>
+    <div class="text-[13px] text-[#5b626d] mb-[18px]">هل أنت متأكد من حذف المورد <span class="font-bold">{{ deleteTarget?.name }}</span>؟ لا يمكن التراجع عن هذا الإجراء.</div>
+    <div class="flex gap-[8px]">
+      <button (click)="executeDelete()" [disabled]="deleting"
+        class="flex-1 px-4 py-[10px] rounded-[9px] bg-red-600 text-white text-[13.5px] font-semibold hover:bg-red-700 transition cursor-pointer disabled:opacity-50">
+        {{ deleting ? 'جارٍ الحذف…' : 'نعم، حذف' }}
+      </button>
+      <button (click)="closeDelete()" [disabled]="deleting"
+        class="flex-1 px-4 py-[10px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>

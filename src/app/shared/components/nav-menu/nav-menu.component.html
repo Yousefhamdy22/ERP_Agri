@@ -1,0 +1,204 @@
+<!-- شريط القوائم للشاشات الكبيرة (Desktop) -->
+<div class="bg-primary sticky top-[64px] z-[39] hidden lg:block shadow-sm">
+  <div class="max-w-[1340px] mx-auto px-[22px] flex items-stretch">
+
+    <!-- الرئيسية -->
+    <a routerLink="/sales" class="h-[46px] px-4 text-[13px] font-semibold cursor-pointer flex items-center gap-[7px] whitespace-nowrap text-[#dfe1f5] border-b-[3px] border-transparent hover:text-white"
+       routerLinkActive="bg-white/[.13] !text-white font-bold border-white">
+      <i class="fa-solid fa-house text-[13px] opacity-90"></i> الرئيسية
+    </a>
+
+    <!-- الأقسام -->
+    <ng-container *ngFor="let item of visibleNavItems">
+      <div class="relative">
+  
+        <!-- زر القسم -->
+        <button (click)="toggle(item.id, $event)"
+          class="h-[46px] px-4 text-[13px] cursor-pointer border-0 flex items-center gap-[7px] whitespace-nowrap border-b-[3px] transition"
+          [ngClass]="(!isNavGroup(item) && isActive(asModule(item).route)) || (isNavGroup(item) && isGroupActive(asGroup(item))) ? 'bg-white/[.13] text-white font-bold border-white' : 'bg-transparent text-[#dfe1f5] font-semibold border-transparent hover:text-white'">
+          <i [class]="item.icon" class="text-[13px] opacity-90"></i>{{ item.name }}
+          <i class="fa-solid fa-angle-down text-[10px] opacity-70"></i>
+        </button>
+  
+        <!-- قائمة منسدلة: قسم مجموعة (الأصناف والمخازن) -->
+        <ng-container *ngIf="isNavGroup(item)">
+          <div *ngIf="openMenu === item.id" (click)="$event.stopPropagation()"
+            class="absolute top-full right-0 w-[260px] bg-white rounded-b-[13px] shadow-pop z-[45] p-[14px] border border-line border-t-0 animate-pop">
+            <div class="text-[10.5px] text-[#a3a8b2] font-bold mx-[6px] mt-[2px] mb-[10px] tracking-wide">أقسام {{ item.name }}</div>
+            <div class="flex flex-col gap-[8px]">
+              <button *ngFor="let sub of asGroup(item).subModules" (click)="goSubModule(sub)"
+                class="flex items-center gap-[11px] px-[13px] py-[13px] border border-[#e9eaef] rounded-[10px] bg-[#fafbfc] text-[13px] font-semibold text-ink cursor-pointer text-right hover:bg-primary-soft hover:border-primary-border hover:text-primary-text transition">
+                <span class="w-8 h-8 rounded-[8px] bg-primary-soft flex items-center justify-center shrink-0">
+                  <i [class]="sub.icon" class="text-primary text-[13px]"></i>
+                </span>
+                <span class="flex-1">{{ sub.name }}</span>
+                <i class="fa-solid fa-angle-left text-[#cfd4dc] text-[12px]"></i>
+              </button>
+            </div>
+          </div>
+        </ng-container>
+  
+        <!-- قائمة منسدلة: قسم عادي -->
+        <ng-container *ngIf="!isNavGroup(item)">
+          <div *ngIf="openMenu === item.id" (click)="$event.stopPropagation()"
+            class="absolute top-full right-0 w-[330px] bg-white rounded-b-[13px] shadow-pop z-[45] p-[14px] border border-line border-t-0 animate-pop">
+            <div class="text-[10.5px] text-[#a3a8b2] font-bold mx-[6px] mt-[2px] mb-[9px] tracking-wide">أقسام {{ item.name }}</div>
+            <div class="grid grid-cols-2 gap-[7px] mb-[14px]">
+              <button *ngFor="let t of tabs" (click)="goModule(asModule(item), t.id)"
+                class="flex items-center gap-[9px] px-[11px] py-[11px] border border-[#e9eaef] rounded-[10px] bg-[#fafbfc] text-[12.5px] font-semibold text-ink cursor-pointer text-right hover:bg-primary-soft hover:border-primary-border hover:text-primary-text">
+                <i [class]="t.icon" class="text-primary text-[13px] w-4"></i>{{ t.label }}
+              </button>
+            </div>
+            <div class="text-[10.5px] text-[#a3a8b2] font-bold mx-[6px] mt-[2px] mb-[7px] tracking-wide">اختصارات سريعة</div>
+            <div *ngFor="let sh of shortcuts(item.id)" (click)="goOp(sh)"
+              class="flex items-center gap-[11px] px-2 py-[9px] rounded-[9px] cursor-pointer text-[13px] text-[#3a4049] font-medium hover:bg-[#f3f4f7]">
+              <i [class]="sh.icon" class="text-primary text-[13px] w-[17px]"></i>{{ sh.label }}
+            </div>
+          </div>
+        </ng-container>
+  
+      </div>
+    </ng-container>
+
+    <!-- لوحة العمليات -->
+    <a routerLink="/dashboard" class="h-[46px] px-4 text-[13px] font-semibold cursor-pointer flex items-center gap-[7px] whitespace-nowrap text-[#dfe1f5] border-b-[3px] border-transparent hover:text-white"
+       routerLinkActive="bg-white/[.13] !text-white font-bold border-white">
+      <i class="fa-solid fa-gauge-high text-[13px] opacity-90"></i> لوحة العمليات
+    </a>
+
+    <!-- مركز التقارير -->
+    <a *ngIf="auth.isAdmin" routerLink="/reports/center" class="h-[46px] px-4 text-[13px] font-semibold cursor-pointer flex items-center gap-[7px] whitespace-nowrap text-[#dfe1f5] border-b-[3px] border-transparent hover:text-white"
+       routerLinkActive="bg-white/[.13] !text-white font-bold border-white">
+      <i class="fa-solid fa-chart-pie text-[13px] opacity-90"></i> مركز التقارير
+    </a>
+  </div>
+</div>
+
+<!-- ════════ قائمة الموبايل الجانبية (Mobile Drawer) ════════ -->
+<ng-container *ngIf="nav.mobileNavOpen">
+  <!-- الخلفية المعتمة -->
+  <div (click)="closeMobile()" class="fixed inset-0 bg-black/50 z-[99] backdrop-blur-[2px] lg:hidden animate-fade-in-up"></div>
+
+  <!-- الدرج الجانبي -->
+  <div (click)="$event.stopPropagation()"
+       class="fixed inset-y-0 right-0 w-[290px] sm:w-[320px] max-w-[85vw] bg-white z-[100] shadow-2xl flex flex-col lg:hidden">
+    
+    <!-- رأس القائمة -->
+    <div class="p-4 bg-primary text-white flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-[8px] bg-white p-0.5 shrink-0 overflow-hidden">
+          <img src="log.jpg" alt="Logo" class="w-full h-full object-contain" />
+        </div>
+        <div>
+          <div class="text-[14px] font-bold leading-tight">نظام المحاسبة والمخازن</div>
+          <div class="text-[10.5px] text-white/80">القائمة الرئيسية</div>
+        </div>
+      </div>
+      <button (click)="closeMobile()"
+        class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+        title="إغلاق">
+        <i class="fa-solid fa-xmark text-[15px]"></i>
+      </button>
+    </div>
+
+    <!-- معلومات المستخدم الحالي -->
+    <div class="p-3 bg-primary-soft/60 border-b border-line flex items-center gap-2.5 shrink-0">
+      <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-[12px] font-bold shrink-0">
+        <i class="fa-solid fa-user"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="text-[12.5px] font-bold text-ink truncate">{{ auth.user?.fullName || auth.user?.email || 'مستخدم' }}</div>
+        <div class="text-[11px] text-muted">{{ auth.user?.roles?.[0] || 'مستخدم' }}</div>
+      </div>
+    </div>
+
+    <!-- روابط التنقل -->
+    <div class="flex-1 overflow-y-auto p-3 space-y-1.5 text-right">
+      
+      <!-- الرئيسية -->
+      <a routerLink="/sales" (click)="closeMobile()"
+        routerLinkActive="bg-primary text-white font-bold"
+        class="flex items-center gap-2.5 px-3 py-2.5 rounded-[9px] text-[13px] font-semibold text-ink hover:bg-[#f3f4f7] transition">
+        <i class="fa-solid fa-house text-[13px] text-primary w-5" routerLinkActive="!text-white"></i>
+        <span>الرئيسية</span>
+      </a>
+
+      <!-- لوحة العمليات -->
+      <a routerLink="/dashboard" (click)="closeMobile()"
+        routerLinkActive="bg-primary text-white font-bold"
+        class="flex items-center gap-2.5 px-3 py-2.5 rounded-[9px] text-[13px] font-semibold text-ink hover:bg-[#f3f4f7] transition">
+        <i class="fa-solid fa-gauge-high text-[13px] text-primary w-5" routerLinkActive="!text-white"></i>
+        <span>لوحة العمليات</span>
+      </a>
+
+      <!-- مركز التقارير -->
+      <a *ngIf="auth.isAdmin" routerLink="/reports/center" (click)="closeMobile()"
+        routerLinkActive="bg-primary text-white font-bold"
+        class="flex items-center gap-2.5 px-3 py-2.5 rounded-[9px] text-[13px] font-semibold text-ink hover:bg-[#f3f4f7] transition">
+        <i class="fa-solid fa-chart-pie text-[13px] text-primary w-5" routerLinkActive="!text-white"></i>
+        <span>مركز التقارير</span>
+      </a>
+
+      <div class="pt-2 pb-1 text-[11px] font-bold text-muted px-2">أقسام المنظومة</div>
+
+      <!-- الأقسام والمجموعات (Accordion) -->
+      <div *ngFor="let item of visibleNavItems" class="border border-line rounded-[10px] overflow-hidden">
+        
+        <!-- زر فتح المجموعة -->
+        <button (click)="toggleMobileGroup(item.id)"
+          class="w-full flex items-center justify-between p-2.5 bg-[#fafbfc] hover:bg-[#f3f4f7] text-[13px] font-bold text-ink transition text-right">
+          <span class="flex items-center gap-2.5">
+            <i [class]="item.icon" class="text-primary text-[13px] w-5"></i>
+            {{ item.name }}
+          </span>
+          <i class="fa-solid text-[11px] text-[#a3a8b2] transition-transform duration-200"
+             [ngClass]="expandedMobileGroup === item.id ? 'fa-chevron-up text-primary' : 'fa-chevron-down'"></i>
+        </button>
+
+        <!-- المحتوى الداخلي عند الفتح -->
+        <div *ngIf="expandedMobileGroup === item.id" class="p-2 bg-white space-y-1 border-t border-line text-right">
+          
+          <!-- إذا كان مجموعة فرعية -->
+          <ng-container *ngIf="isNavGroup(item)">
+            <button *ngFor="let sub of asGroup(item).subModules" (click)="goSubModule(sub)"
+              class="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[12.5px] font-medium text-[#4b5563] hover:bg-primary-soft hover:text-primary transition text-right">
+              <i [class]="sub.icon" class="text-primary text-[12px] w-4"></i>
+              <span>{{ sub.name }}</span>
+            </button>
+          </ng-container>
+
+          <!-- إذا كان قسم عادي -->
+          <ng-container *ngIf="!isNavGroup(item)">
+            <button *ngFor="let t of tabs" (click)="goModule(asModule(item), t.id)"
+              class="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[12.5px] font-medium text-[#4b5563] hover:bg-primary-soft hover:text-primary transition text-right">
+              <i [class]="t.icon" class="text-primary text-[12px] w-4"></i>
+              <span>{{ t.label }}</span>
+            </button>
+          </ng-container>
+
+        </div>
+      </div>
+
+      <!-- إعدادات النظام -->
+      <div *ngIf="auth.isAdmin" class="pt-2">
+        <a routerLink="/settings" (click)="closeMobile()"
+          routerLinkActive="bg-primary text-white font-bold"
+          class="flex items-center gap-2.5 px-3 py-2.5 rounded-[9px] text-[13px] font-semibold text-ink hover:bg-[#f3f4f7] transition">
+          <i class="fa-solid fa-gear text-[13px] text-primary w-5" routerLinkActive="!text-white"></i>
+          <span>إعدادات النظام</span>
+        </a>
+      </div>
+
+    </div>
+
+    <!-- أسفل الدرج: تسجيل الخروج -->
+    <div class="p-3 border-t border-line bg-[#fafbfc] shrink-0">
+      <button (click)="logout()"
+        class="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-[9px] border border-[#f3d4d4] bg-[#fdeaea] text-danger font-semibold text-[13px] hover:bg-[#f9d6d6] transition cursor-pointer">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        <span>تسجيل الخروج</span>
+      </button>
+    </div>
+
+  </div>
+</ng-container>

@@ -1,0 +1,294 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="اضافة سند"
+      icon="fa-solid fa-file-invoice-dollar">
+    </app-page-header>
+
+    <!-- Voucher type tabs -->
+    <div class="flex flex-wrap gap-[8px] mb-[16px]">
+      <button *ngFor="let t of voucherTypes" (click)="selectType(t.value)"
+        class="px-4 py-[9px] rounded-[9px] text-[13px] font-semibold transition cursor-pointer border"
+        [ngClass]="activeType === t.value ? 'bg-primary text-white border-primary' : 'bg-white text-[#5b626d] border-line hover:bg-[#f3f4f7]'">
+        {{ t.label }}
+      </button>
+      <button (click)="selectWalletTab()"
+        class="px-4 py-[9px] rounded-[9px] text-[13px] font-semibold transition cursor-pointer border"
+        [ngClass]="usesWallet ? 'bg-primary text-white border-primary' : 'bg-white text-[#5b626d] border-line hover:bg-[#f3f4f7]'">
+        <i class="fa-solid fa-wallet"></i> محفظة إلكترونية
+      </button>
+    </div>
+
+    <form [formGroup]="form" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الفرع <span class="text-danger">*</span>
+          </label>
+          <app-select
+          formControlName="branchId"
+          [options]="[{value: '', label: '— اختر الفرع —'}].concat(branches.map(b => ({value: b.id, label: b.name})))"
+          placeholder="— اختر الفرع —"
+          (changed)="onBranchChange()"
+          [searchable]="true"
+          />
+          <div *ngIf="invalid('branchId')" class="text-[11px] text-danger mt-[4px]">الفرع مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            {{ partyLabel }} <span class="text-danger">*</span>
+          </label>
+          <app-select
+          formControlName="partyId"
+          [options]="[{value: '', label: '— اختر ' + partyLabel + ' —'}].concat(parties.map(p => ({value: p.id, label: p.name})))"
+          placeholder="— اختر {{ partyLabel }} —"
+          (changed)="onPartySelected()"
+          />
+          <div *ngIf="invalid('partyId')" class="text-[11px] text-danger mt-[4px]">{{ partyLabel }} مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            المبلغ <span class="text-danger">*</span>
+          </label>
+          <input type="number" step="0.01" min="0.01" formControlName="amount"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+            [ngClass]="invalid('amount') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('amount')" class="text-[11px] text-danger mt-[4px]">أدخل مبلغاً أكبر من صفر</div>
+        </div>
+
+        <!-- الحساب الافتراضي (مدين) — غير مستخدَم لسندات المحفظة الإلكترونية (لا حقل بديل
+             لها في CreateWalletPaymentDto/CreateWalletReceiptDto، bankAccountId إلزامي بدلاً منه) -->
+        <div class="group" *ngIf="!usesWallet">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            حساب النقدية/البنك (مدين) <span class="text-danger">*</span>
+          </label>
+          <app-select
+          formControlName="cashAccountCode"
+          [options]="cashAccounts.map(a => ({value: a.code, label: a.label}))"
+          />
+        </div>
+
+        <!-- سند نقدي (قبض/صرف): خزينة نقدية اختيارية بدل الاختيار المباشر أعلاه -->
+        <ng-container *ngIf="usesCashSafe">
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              الخزينة النقدية <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <app-select
+          formControlName="cashSafeId"
+          [options]="[{value: '', label: '— اختر الخزينة —'}].concat(filteredCashSafes.map(s => ({value: s.id, label: (s.nameAr || s.name) + ' (' + s.code + ')'})))"
+          placeholder="— اختر الخزينة —"
+          (changed)="onCashSafeSelected()"
+          />
+            <div *ngIf="!filteredCashSafes.length" class="text-[11px] text-muted mt-[4px]">
+              لا توجد خزائن نقدية مسجَّلة لهذا الفرع —
+              <a routerLink="/accounting/cash-safes/manage" class="text-primary-text hover:underline">إضافة خزينة</a>
+            </div>
+            <div *ngIf="form.value.cashSafeId" class="text-[11px] text-muted mt-[4px]">تم اشتقاق الحساب أعلاه تلقائياً من الخزينة المختارة</div>
+          </div>
+        </ng-container>
+
+        <!-- سند تحويل بنكي / قبض شيك: حساب بنكي اختياري مرتبط بالفرع بدل الاختيار المباشر أعلاه -->
+        <ng-container *ngIf="usesBankAccount">
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              الحساب البنكي <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <app-select
+          formControlName="bankAccountId"
+          [options]="[{value: '', label: '— اختر الحساب البنكي —'}].concat(filteredBankAccounts.map(a => ({value: a.id, label: (a.bankNameAr || a.bankName) + ' — ' + a.accountNumber})))"
+          placeholder="— اختر الحساب البنكي —"
+          (changed)="onBankAccountSelected()"
+          />
+            <div *ngIf="!filteredBankAccounts.length" class="text-[11px] text-muted mt-[4px]">
+              لا توجد حسابات بنكية مربوطة بهذا الفرع —
+              <a routerLink="/accounting/bank-accounts/manage" class="text-primary-text hover:underline">إضافة حساب بنكي</a>
+            </div>
+            <div *ngIf="form.value.bankAccountId" class="text-[11px] text-muted mt-[4px]">تم اشتقاق الحساب أعلاه تلقائياً من الحساب البنكي المختار</div>
+          </div>
+        </ng-container>
+
+        <!-- محفظة إلكترونية (InstaPay/VodafoneCash) -->
+        <ng-container *ngIf="usesWallet">
+          <div class="col-span-1 md:col-span-2 flex flex-wrap gap-[16px] items-start">
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الاتجاه</label>
+              <div class="flex border border-[#e3e6ea] rounded-[9px] overflow-hidden">
+                <button type="button" (click)="selectType('WalletReceipt')"
+                  class="px-4 py-[9px] text-[13px] font-semibold cursor-pointer border-0"
+                  [ngClass]="activeType === 'WalletReceipt' ? 'bg-primary text-white' : 'bg-white text-[#5b626d] hover:bg-[#f3f4f7]'">
+                  قبض
+                </button>
+                <button type="button" (click)="selectType('WalletPayment')"
+                  class="px-4 py-[9px] text-[13px] font-semibold cursor-pointer border-0 border-r border-[#e3e6ea]"
+                  [ngClass]="activeType === 'WalletPayment' ? 'bg-primary text-white' : 'bg-white text-[#5b626d] hover:bg-[#f3f4f7]'">
+                  صرف
+                </button>
+              </div>
+            </div>
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">نوع المحفظة</label>
+              <div class="flex border border-[#e3e6ea] rounded-[9px] overflow-hidden">
+                <button *ngFor="let p of walletProviders" type="button" (click)="onWalletProviderChange(p.type)"
+                  class="px-4 py-[9px] text-[13px] font-semibold cursor-pointer border-0 border-r border-[#e3e6ea] last:border-r-0"
+                  [ngClass]="walletProvider === p.type ? 'bg-primary text-white' : 'bg-white text-[#5b626d] hover:bg-[#f3f4f7]'">
+                  {{ p.label }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">المحفظة <span class="text-danger">*</span></label>
+            <app-select
+          formControlName="bankAccountId"
+          [options]="[{value: '', label: '— اختر المحفظة —'}].concat(filteredWallets.map(a => ({value: a.id, label: (a.bankNameAr || a.bankName) + ' — ' + a.accountNumber})))"
+          placeholder="— اختر المحفظة —"
+          (changed)="onBankAccountSelected()"
+          />
+            <div *ngIf="!filteredWallets.length" class="text-[11px] text-muted mt-[4px]">
+              لا توجد محافظ {{ walletProvider === 2 ? 'InstaPay' : 'VodafoneCash' }} مسجَّلة لهذا الفرع —
+              <a routerLink="/accounting/bank-accounts/manage" class="text-primary-text hover:underline">إضافة محفظة</a>
+            </div>
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">رقم العملية <span class="text-danger">*</span></label>
+            <input formControlName="transactionReference" placeholder="رقم العملية من تطبيق المحفظة"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+        </ng-container>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            {{ isReceipt ? 'حساب العملاء (دائن)' : 'حساب الموردين (مدين)' }} <span class="text-danger">*</span>
+          </label>
+          <app-select
+          formControlName="creditChargeAccountCode"
+          [options]="creditChargeAccounts.map(a => ({value: a.code, label: a.label}))"
+          />
+        </div>
+
+        <!-- Cash Payment only -->
+        <div class="group" *ngIf="activeType === 'CashPayment'">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الدفعة <span class="text-danger">*</span>
+          </label>
+          <app-select
+          formControlName="paymentId"
+          [options]="[{value: '', label: '— اختر الدفعة —'}].concat(linkablePayments.map(p => ({value: p.id, label: p.label})))"
+          placeholder="— اختر الدفعة —"
+          />
+          <div *ngIf="form.value.partyId && !linkablePayments.length" class="text-[11px] text-muted mt-[4px]">
+            لا توجد دفعات لهذا المورد
+          </div>
+        </div>
+
+        <!-- Check Receipt only -->
+        <ng-container *ngIf="activeType === 'CheckReceipt'">
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">رقم الشيك <span class="text-danger">*</span></label>
+            <input formControlName="checkNumber" placeholder="123456"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">البنك المُصدر <span class="text-danger">*</span></label>
+            <input formControlName="issuingBank" placeholder="بنك الأهلي"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ الشيك <span class="text-danger">*</span></label>
+            <input type="date" formControlName="checkIssueDate"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              الفترة المالية <span class="text-danger">*</span>
+            </label>
+            <app-select
+          formControlName="fiscalPeriodId"
+          [options]="[{value: '', label: '— اختر الفترة المالية —'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode + ' (' + p.startDate + ' — ' + p.endDate + ')'})))"
+          placeholder="— اختر الفترة المالية —"
+          />
+            <div *ngIf="!fiscalPeriods.length" class="text-[11px] text-muted mt-[4px]">لا توجد فترات مالية مفتوحة</div>
+          </div>
+        </ng-container>
+
+        <!-- Bank Transfer only -->
+        <ng-container *ngIf="activeType === 'BankTransfer'">
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">مرجع التحويل <span class="text-danger">*</span></label>
+            <input formControlName="transferReference" placeholder="SWIFT-XYZ-12345"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">اسم البنك <span class="text-danger">*</span></label>
+            <input formControlName="bankName" placeholder="بنك مصر"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ التحويل <span class="text-danger">*</span></label>
+            <input type="date" formControlName="transferDate"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              الفترة المالية <span class="text-danger">*</span>
+            </label>
+            <app-select
+          formControlName="fiscalPeriodId"
+          [options]="[{value: '', label: '— اختر الفترة المالية —'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode + ' (' + p.startDate + ' — ' + p.endDate + ')'})))"
+          placeholder="— اختر الفترة المالية —"
+          />
+            <div *ngIf="!fiscalPeriods.length" class="text-[11px] text-muted mt-[4px]">لا توجد فترات مالية مفتوحة</div>
+          </div>
+        </ng-container>
+
+        <!-- Link to invoice (غير مدعوم في سند صرف نقدي/سندات المحفظة الإلكترونية — الباك ايند
+             لا يملك حقل LinkedInvoiceId لهذه الأنواع) -->
+        <div class="col-span-1 md:col-span-2 group" *ngIf="activeType !== 'CashPayment' && !usesWallet">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            ربط بفاتورة <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <app-select
+          formControlName="linkedInvoiceId"
+          [options]="[{value: '', label: '— بدون ربط —'}].concat(linkableInvoices.map(inv => ({value: inv.id, label: inv.label})))"
+          placeholder="— بدون ربط —"
+          />
+          <div *ngIf="form.value.partyId && !linkableInvoices.length" class="text-[11px] text-muted mt-[4px]">
+            لا توجد فواتير مؤكدة لهذا {{ partyLabel }}
+          </div>
+        </div>
+
+        <div class="col-span-1 md:col-span-2 group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            البيان
+          </label>
+          <textarea formControlName="description" rows="2" placeholder="وصف مختصر لسبب السند…"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary resize-none transition"></textarea>
+        </div>
+
+      </div>
+
+      <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+        <app-button variant="primary" icon="fa-solid fa-floppy-disk" (click)="submit()" [disabled]="saving">
+          {{ saving ? 'جارٍ الحفظ…' : 'حفظ السند' }}
+        </app-button>
+        <app-button variant="ghost" routerLink="/payment-vouchers">إلغاء</app-button>
+      </div>
+    </form>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

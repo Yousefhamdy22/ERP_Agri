@@ -1,0 +1,209 @@
+<app-page-header
+  title="إعدادات النظام"
+  subtitle="لوحة التحكم المركزية لإعدادات وسياسات المنظومة وإدارة البيانات"
+  icon="fa-solid fa-gear"
+  [breadcrumbs]="breadcrumbs">
+</app-page-header>
+
+<div class="space-y-6">
+
+  <!-- ── Top stats banner ── -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-white border border-[#e3e6ea] rounded-xl p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-primary-soft flex items-center justify-center text-primary text-xl shrink-0">
+        <i class="fa-solid fa-sliders"></i>
+      </div>
+      <div>
+        <div class="text-xs text-muted font-medium">إجمالي الأقسام المعرفة</div>
+        <div class="text-xl font-bold text-ink mt-0.5">{{ totalCount }} قسم</div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-[#e3e6ea] rounded-xl p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div>
+        <div class="text-xs text-muted font-medium">الإعدادات النشطة والمتاحة</div>
+        <div class="text-xl font-bold text-emerald-700 mt-0.5">{{ activeCount }} مفعلة حالياً</div>
+      </div>
+    </div>
+
+    <div class="bg-white border border-[#e3e6ea] rounded-xl p-4 flex items-center gap-4 shadow-sm">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0">
+        <i class="fa-solid fa-user-shield"></i>
+      </div>
+      <div>
+        <div class="text-xs text-muted font-medium">صلاحية المستخدم الحالي</div>
+        <div class="text-base font-bold text-ink mt-0.5 flex items-center gap-1.5">
+          <span>{{ auth.isAdmin ? 'مدير نظام (Admin)' : 'مستخدم عادي' }}</span>
+          <span *ngIf="auth.isAdmin" class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Search & Filter Controls ── -->
+  <div class="bg-white border border-[#e3e6ea] rounded-xl p-4 shadow-sm space-y-4">
+    <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+      <!-- Search Input -->
+      <div class="relative flex-1 max-w-lg">
+        <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-1/2 -translate-y-1/2 text-muted text-sm"></i>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          placeholder="ابحث بالاسم، الوصف، أو الكلمات الدلالية..."
+          class="w-full pr-10 pl-9 py-2.5 bg-[#f8f9fa] border border-[#e3e6ea] rounded-lg text-sm text-ink placeholder-[#8a909c] focus:outline-none focus:border-primary focus:bg-white transition"
+        />
+        <button
+          *ngIf="searchTerm"
+          (click)="searchTerm = ''"
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink text-xs p-1"
+          title="مسح البحث">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="text-xs text-muted font-medium self-center">
+        عرض <span class="font-bold text-ink">{{ filteredSettings.length }}</span> من أصل {{ totalCount }}
+      </div>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-t border-[#f0f2f5]">
+      <button
+        *ngFor="let cat of categories"
+        (click)="selectCategory(cat.id)"
+        [ngClass]="selectedCategory === cat.id ? 'bg-primary text-white border-primary shadow-sm' : 'bg-[#f8f9fa] text-[#4b5563] border-[#e3e6ea] hover:bg-[#eef0f3]'"
+        class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg border text-xs font-semibold whitespace-nowrap cursor-pointer transition">
+        <i [class]="cat.icon" class="text-[11px]"></i>
+        <span>{{ cat.nameAr }}</span>
+        <span
+          [ngClass]="selectedCategory === cat.id ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'"
+          class="px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+          {{ getCategoryCount(cat.id) }}
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Settings Cards Grid ── -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div
+      *ngFor="let item of filteredSettings"
+      (click)="openSetting(item)"
+      [ngClass]="item.status === 'active' ? 'hover:border-primary hover:shadow-md cursor-pointer' : 'opacity-85 hover:border-amber-300 cursor-pointer'"
+      class="group bg-white border border-[#e3e6ea] rounded-xl p-5 flex flex-col justify-between transition-all duration-200 shadow-sm relative overflow-hidden">
+      
+      <!-- Top banner line for active/inactive -->
+      <div
+        class="absolute top-0 right-0 left-0 h-1"
+        [style.backgroundColor]="item.status === 'active' ? item.iconColor : '#d1d5db'">
+      </div>
+
+      <!-- Card Top: Icon & Badges -->
+      <div>
+        <div class="flex items-start justify-between gap-3 mb-3.5 mt-1">
+          <!-- Icon -->
+          <div
+            class="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 transition-transform group-hover:scale-105"
+            [style.backgroundColor]="item.iconBg"
+            [style.color]="item.iconColor">
+            <i [class]="item.icon"></i>
+          </div>
+
+          <!-- Badges -->
+          <div class="flex flex-col items-end gap-1.5">
+            <span
+              *ngIf="item.status === 'active'"
+              class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              متاح ومفعّل
+            </span>
+
+            <span
+              *ngIf="item.status === 'upcoming'"
+              class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+              <i class="fa-solid fa-clock text-[10px]"></i>
+              قريبًا
+            </span>
+
+            <span
+              *ngIf="item.adminOnly"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-red-50 text-red-700 border border-red-100"
+              title="يتطلب صلاحيات مدير النظام">
+              <i class="fa-solid fa-shield text-[9px]"></i>
+              مدير النظام
+            </span>
+          </div>
+        </div>
+
+        <!-- Title & Subtitle -->
+        <h3 class="text-base font-bold text-ink group-hover:text-primary transition-colors flex items-center gap-2">
+          {{ item.titleAr }}
+        </h3>
+        <p class="text-[11px] text-[#8a909c] font-medium mb-2.5 font-mono">{{ item.titleEn }}</p>
+
+        <!-- Description -->
+        <p class="text-xs text-[#4b5563] leading-relaxed line-clamp-3">
+          {{ item.descriptionAr }}
+        </p>
+
+        <!-- Chip Tags -->
+        <div class="flex flex-wrap gap-1.5 mt-3" *ngIf="item.badges && item.badges.length > 0">
+          <span
+            *ngFor="let b of item.badges"
+            class="px-2 py-0.5 rounded bg-[#f3f4f7] text-[#555d6b] text-[11px] font-medium border border-[#e5e7eb]">
+            {{ b }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Card Action Footer -->
+      <div class="pt-4 mt-4 border-t border-[#f0f2f5] flex items-center justify-between text-xs font-semibold">
+        <ng-container *ngIf="item.status === 'active'">
+          <span class="text-primary group-hover:underline flex items-center gap-1.5">
+            <span>فتح الإعدادات</span>
+            <i class="fa-solid fa-arrow-left text-[11px] transition-transform group-hover:-translate-x-1"></i>
+          </span>
+          <span class="text-[11px] text-muted font-normal">انقر للدخول</span>
+        </ng-container>
+
+        <ng-container *ngIf="item.status === 'upcoming'">
+          <span class="text-amber-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-hourglass-half text-[11px]"></i>
+            <span>جاهز للتوسع مستقبلاً</span>
+          </span>
+          <span class="text-[11px] text-muted font-normal">قيد التطوير</span>
+        </ng-container>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="filteredSettings.length === 0" class="bg-white border border-[#e3e6ea] rounded-xl p-12 text-center shadow-sm">
+    <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-2xl">
+      <i class="fa-solid fa-folder-open"></i>
+    </div>
+    <div class="text-base font-bold text-ink">لا توجد إعدادات مطابقة للبحث</div>
+    <div class="text-xs text-muted mt-1">جرب البحث بكلمات دلالية أخرى أو اختر "جميع الإعدادات"</div>
+    <button
+      (click)="searchTerm = ''; selectedCategory = 'all'"
+      class="mt-4 px-4 py-2 bg-primary-soft text-primary rounded-lg text-xs font-semibold hover:bg-primary hover:text-white transition cursor-pointer">
+      إعادة ضبط الفلاتر
+    </button>
+  </div>
+
+  <!-- Architecture & Extensibility notice -->
+  <div class="bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-white border border-blue-100 rounded-xl p-4 flex items-start gap-3.5">
+    <div class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-sm shrink-0 mt-0.5">
+      <i class="fa-solid fa-puzzle-piece"></i>
+    </div>
+    <div class="text-xs text-[#374151] leading-relaxed">
+      <div class="font-bold text-blue-900 mb-0.5">تصميم معياري وقابل للتوسع المستمر</div>
+      تم تصميم صفحة الإعدادات بنظام معياري مستقل (Settings Registry) ليتيح إضافة أي إعدادات إضافية للنظام لاحقاً بمجرد إضافة بياناتها بدون التأثير على بنية القوائم الرئيسية.
+    </div>
+  </div>
+
+</div>

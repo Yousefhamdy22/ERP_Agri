@@ -1,0 +1,549 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="ادارة الدفعات"
+      icon="fa-solid fa-hand-holding-dollar"
+      [subtitle]="'إجمالي: ' + total + ' دفعة'">
+    </app-page-header>
+
+    <!-- Branch -->
+    <div class="mb-[16px] bg-white border border-line rounded-[13px] p-[16px] shadow-sm">
+      <div class="flex flex-wrap gap-[10px] items-center">
+        <app-select
+          [(ngModel)]="branchId"
+          [options]="branches.map(b => ({value: b.id, label: b.nameAr || b.name}))"
+          (changed)="onBranchChange()"
+          [searchable]="true"
+          />
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="mb-[16px] bg-white border border-line rounded-[13px] p-[16px] shadow-sm">
+      <div class="flex flex-wrap gap-[10px] items-center">
+        <app-select
+          [(ngModel)]="partyId"
+          [options]="[{value: '', label: 'كل الأطراف'}].concat(parties.map(p => ({value: p.id, label: p.name})))"
+          placeholder="كل الأطراف"
+          (changed)="onFilterChange()"
+          />
+
+        <button *ngIf="partyId" (click)="toggleUnallocatedOnly()"
+          [title]="'عرض دفعات هذا الطرف غير المخصَّصة لأي فاتورة فقط'"
+          class="px-3 py-[9px] rounded-[9px] text-[13px] font-semibold transition cursor-pointer border whitespace-nowrap"
+          [ngClass]="unallocatedOnly ? 'bg-[#5156be] text-white border-[#5156be]' : 'bg-white text-[#5b626d] border-line hover:bg-[#f3f4f7]'">
+          <i class="fa-solid fa-link-slash text-[12px]"></i> غير مخصَّصة فقط
+        </button>
+
+        <app-select
+          [(ngModel)]="status"
+          [options]="statusOptions.map(s => ({value: s.value, label: s.label}))"
+          (changed)="onFilterChange()"
+          [disabled]="unallocatedOnly"
+          />
+
+        <app-select
+          [(ngModel)]="method"
+          [options]="methodOptions.map(m => ({value: m.value, label: m.label}))"
+          (changed)="onFilterChange()"
+          [disabled]="unallocatedOnly"
+          />
+
+        <app-select
+          [(ngModel)]="type"
+          [options]="typeOptions.map(t => ({value: t.value, label: t.label}))"
+          (changed)="onFilterChange()"
+          [disabled]="unallocatedOnly"
+          />
+
+        <div class="flex items-center gap-[6px]">
+          <label class="text-[12px] text-muted">من التاريخ</label>
+          <input type="date" [(ngModel)]="fromDate" (ngModelChange)="onFilterChange()" [disabled]="unallocatedOnly"
+            class="px-3 py-[9px] border border-line rounded-[9px] text-[13px] bg-white outline-none focus:border-primary disabled:opacity-40 disabled:cursor-not-allowed" />
+        </div>
+
+        <div class="flex items-center gap-[6px]">
+          <label class="text-[12px] text-muted">إلى التاريخ</label>
+          <input type="date" [(ngModel)]="toDate" (ngModelChange)="onFilterChange()" [disabled]="unallocatedOnly"
+            class="px-3 py-[9px] border border-line rounded-[9px] text-[13px] bg-white outline-none focus:border-primary disabled:opacity-40 disabled:cursor-not-allowed" />
+        </div>
+
+        <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[9px] flex-1 min-w-[200px] shadow-sm"
+          [ngClass]="unallocatedOnly ? 'opacity-40 pointer-events-none' : ''">
+          <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+          <input [ngModel]="search" (ngModelChange)="onSearchChange($event)" placeholder="ابحث برقم الدفعة..." [disabled]="unallocatedOnly"
+            class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+          <button *ngIf="search" (click)="search=''; onFilterChange()"
+            class="text-[#a3a8b2] hover:text-ink bg-transparent border-0 cursor-pointer text-[13px]">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <button (click)="toggleSortDirection()"
+          [title]="descending ? 'تنازلي' : 'تصاعدي'"
+          class="w-[38px] h-[38px] rounded-[9px] border border-line bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition cursor-pointer">
+          <i class="fa-solid" [ngClass]="descending ? 'fa-arrow-down-wide-short' : 'fa-arrow-up-short-wide'"></i>
+        </button>
+
+        <button (click)="clearFilters()"
+          class="px-3 py-[9px] border border-line rounded-[9px] text-[13px] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition cursor-pointer whitespace-nowrap">
+          <i class="fa-solid fa-filter-circle-xmark text-[12px]"></i> مسح المرشحات
+        </button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm relative">
+      <div *ngIf="refreshing && !loading" class="absolute top-0 inset-x-0 h-[2px] bg-primary/25 overflow-hidden z-10">
+        <div class="h-full w-1/3 bg-primary animate-pulse"></div>
+      </div>
+
+      <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[12.5px] table-fixed min-w-[850px] transition-opacity"
+        [ngClass]="refreshing && !loading ? 'opacity-50 pointer-events-none' : ''">
+        <colgroup>
+          <col class="w-[4%]" />
+          <col class="w-[14%]" />
+          <col class="w-[18%]" />
+          <col class="w-[11%]" />
+          <col class="w-[14%]" />
+          <col class="w-[11%]" />
+          <col class="w-[10%]" />
+          <col class="w-[10%]" />
+        </colgroup>
+        <thead>
+          <tr class="bg-primary text-white text-[11.5px]">
+            <th class="px-[8px] py-[11px] text-right font-semibold">#</th>
+            <th class="px-2 py-[11px] text-right font-semibold">رقم الدفعة</th>
+            <th class="px-2 py-[11px] text-right font-semibold">الطرف</th>
+            <th class="px-2 py-[11px] text-center font-semibold">المبلغ</th>
+            <th class="px-2 py-[11px] text-right font-semibold">الطريقة</th>
+            <th class="px-2 py-[11px] text-right font-semibold">التاريخ</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الحالة</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of payments; let i = index"
+            class="border-t border-[#f1f2f4] hover:bg-[#fafbfc] transition odd:bg-[#fcfcfd]"
+            [ngClass]="{'!bg-amber-50/60': p.type === 'CheckIssued', '!bg-purple-50/60': p.type === 'CheckReceived'}">
+            <td class="px-[8px] py-[9px] text-muted text-[11.5px]">{{ (page - 1) * pageSize + i + 1 }}</td>
+            <td class="px-2 py-[9px] font-mono text-[11.5px] font-bold">
+              <button (click)="openDetail(p.id)" [title]="p.paymentNumber"
+                class="text-primary-text hover:underline bg-transparent border-0 cursor-pointer p-0 font-mono font-bold truncate block w-full text-right">
+                {{ p.paymentNumber }}
+              </button>
+              <span *ngIf="p.type === 'CheckIssued' || p.type === 'CheckReceived' || p.type === 'AdvancePayment'"
+                class="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-sans font-medium"
+                [ngClass]="typeBadgeClass(p.type)">
+                {{ typeLabel(p.type) }}
+              </span>
+            </td>
+            <td class="px-2 py-[9px] font-semibold truncate" [title]="p.partyName">{{ p.partyName }}</td>
+            <td class="px-2 py-[9px] text-center font-semibold truncate">{{ p.amount | number:'1.2-2' }}</td>
+            <td class="px-2 py-[9px] text-[#5b626d]">
+              <div class="truncate">
+                <i [class]="methodIcon(p.method)" class="text-[10.5px] me-1"></i>{{ methodLabel(p.method) }}
+              </div>
+              <div *ngIf="p.checkNumber" class="text-[10.5px] text-muted font-mono truncate" [title]="'شيك رقم: ' + p.checkNumber + (p.checkBank ? ' - ' + p.checkBank : '')">
+                <i class="fa-solid fa-money-check text-[10px] me-0.5 text-amber-600"></i> {{ p.checkNumber }}
+              </div>
+            </td>
+            <td class="px-2 py-[9px] text-[#5b626d] whitespace-nowrap">{{ formatDate(p.paymentDate) }}</td>
+            <td class="px-2 py-[9px] text-center">
+              <span class="px-[6px] py-[2px] rounded-full text-[10.5px] font-semibold whitespace-nowrap" [ngClass]="statusBadgeClass(p.status)">
+                {{ statusLabel(p.status) }}
+              </span>
+            </td>
+            <td class="px-[6px] py-[9px]">
+              <div class="flex items-center justify-center">
+                <button (click)="openDetail(p.id)"
+                  class="px-[8px] py-[5px] rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[10.5px] cursor-pointer">
+                  عرض
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div *ngIf="loading" class="p-12 text-center text-muted">
+        <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+        جارٍ تحميل الدفعات…
+      </div>
+      <div *ngIf="!loading && loadError" class="p-12 text-center text-danger">
+        <i class="fa-solid fa-triangle-exclamation text-[26px] block mb-3"></i>
+        تعذّر تحميل الدفعات.
+        <div class="mt-3">
+          <button (click)="load()" class="text-primary-text text-[13px] font-semibold hover:underline bg-transparent border-0 cursor-pointer">
+            <i class="fa-solid fa-rotate-right text-[11px]"></i> إعادة المحاولة
+          </button>
+        </div>
+      </div>
+      <div *ngIf="!loading && !loadError && payments.length === 0" class="p-12 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-hand-holding-dollar text-[30px] block mb-3 opacity-40"></i>
+        لا توجد دفعات
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="!loading && !loadError && payments.length > 0" class="flex flex-wrap items-center justify-between gap-[10px] px-[16px] py-[12px] border-t border-[#f1f2f4] text-[12.5px] text-muted">
+        <span>صفحة {{ page }} من {{ totalPages }} — {{ total }} دفعة</span>
+        <div class="flex gap-[8px]">
+          <button (click)="prevPage()" [disabled]="!hasPreviousPage || refreshing"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-right"></i>
+          </button>
+          <button (click)="nextPage()" [disabled]="!hasNextPage || refreshing"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-left"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div *ngIf="selectedPayment || detailLoading"
+  class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[720px] shadow-[0_20px_60px_rgba(0,0,0,.18)] max-h-[92vh] overflow-y-auto">
+
+    <div *ngIf="detailLoading" class="p-14 text-center text-muted">
+      <i class="fa-solid fa-spinner fa-spin text-[28px] block mb-3"></i>
+      جارٍ تحميل تفاصيل الدفعة…
+    </div>
+
+    <ng-container *ngIf="selectedPayment as p">
+      <div class="flex items-center justify-between px-[22px] py-[16px] border-b border-[#f0f1f4]">
+        <div class="flex items-center gap-[12px]">
+          <i [class]="methodIcon(p.method)" class="text-primary text-[18px]"></i>
+          <div class="text-[18px] font-bold">{{ p.paymentNumber }}</div>
+          <span class="px-2 py-[3px] rounded-full text-[11px] font-semibold" [ngClass]="statusBadgeClass(p.status)">
+            {{ statusLabel(p.status) }}
+          </span>
+        </div>
+        <button (click)="closeDetail()"
+          class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px]">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-[22px]">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-[14px] mb-[20px]">
+          <div><span class="text-[12px] text-muted block mb-[2px]">الطرف</span><span class="font-semibold">{{ p.partyName }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">النوع</span><span class="font-semibold">{{ typeLabel(p.type) }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">تاريخ الدفعة</span><span class="font-semibold">{{ formatDate(p.paymentDate) }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">المبلغ</span><span class="font-bold text-[16px] text-[#5156be]">{{ p.amount | number:'1.2-2' }}</span></div>
+          <div *ngIf="p.reference"><span class="text-[12px] text-muted block mb-[2px]">المرجع</span><span class="font-semibold">{{ p.reference }}</span></div>
+          <div *ngIf="p.checkNumber"><span class="text-[12px] text-muted block mb-[2px]">رقم الشيك</span><span class="font-semibold font-mono">{{ p.checkNumber }}</span></div>
+          <div *ngIf="p.checkDate"><span class="text-[12px] text-muted block mb-[2px]">تاريخ استحقاق الشيك</span><span class="font-semibold">{{ formatDate(p.checkDate) }}</span></div>
+          <div *ngIf="p.checkBank"><span class="text-[12px] text-muted block mb-[2px]">البنك المسحوب عليه</span><span class="font-semibold">{{ p.checkBank }}</span></div>
+        </div>
+
+        <!-- Allocations -->
+        <div class="rounded-[9px] overflow-hidden border border-[#e3e6ea] mb-[20px]" *ngIf="p.allocations.length">
+          <div class="overflow-x-auto">
+          <table class="w-full text-[13px] min-w-[520px]">
+            <thead>
+              <tr class="bg-[#fafbfc] text-[11.5px] text-muted border-b border-[#e3e6ea]">
+                <th class="px-[12px] py-[9px] text-right font-semibold">الفاتورة</th>
+                <th class="px-[12px] py-[9px] text-center font-semibold">المخصَّص</th>
+                <th class="px-[12px] py-[9px] text-center font-semibold">الخصم</th>
+                <th class="px-[12px] py-[9px] text-center font-semibold">الرصيد المتبقي</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let a of p.allocations" class="border-t border-[#f0f1f4] hover:bg-[#fafbfc]">
+                <td class="px-[12px] py-[8px] font-mono font-semibold">{{ a.invoiceNumber }}</td>
+                <td class="px-[12px] py-[8px] text-center font-mono">{{ a.allocatedAmount | number:'1.2-2' }}</td>
+                <td class="px-[12px] py-[8px] text-center font-mono text-[#0e9f6e]">{{ a.discountTaken | number:'1.2-2' }}</td>
+                <td class="px-[12px] py-[8px] text-center font-mono font-bold">{{ a.remainingBalance | number:'1.2-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        <!-- Audit trail -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-[10px] text-[12px] text-muted mb-[20px]">
+          <div *ngIf="p.createdBy">أنشئت بواسطة: <span class="font-semibold text-ink">{{ p.createdBy }}</span> — {{ formatDate(p.createdAt) }}</div>
+          <div *ngIf="p.approvedBy">اعتُمدت بواسطة: <span class="font-semibold text-ink">{{ p.approvedBy }}</span> — {{ p.approvedAt ? formatDate(p.approvedAt) : '' }}</div>
+          <div *ngIf="p.postedBy">رُحّلت بواسطة: <span class="font-semibold text-ink">{{ p.postedBy }}</span> — {{ p.postedAt ? formatDate(p.postedAt) : '' }}</div>
+          <div *ngIf="p.cancelledBy">أُلغيت بواسطة: <span class="font-semibold text-ink">{{ p.cancelledBy }}</span> — {{ p.cancelledAt ? formatDate(p.cancelledAt) : '' }}</div>
+        </div>
+        <div *ngIf="p.cancelledReason" class="bg-[#fdeaea] border border-[#f3d4d4] rounded-[9px] p-[14px] mb-[20px] text-[12.5px] text-danger">
+          <i class="fa-solid fa-circle-info"></i> سبب الإلغاء: {{ p.cancelledReason }}
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-wrap items-center gap-[10px] pt-[14px] border-t border-[#f0f1f4]">
+          <button *ngIf="p.status === 'Pending' && p.type !== 'AdvancePayment' && p.type !== 'CheckIssued' && p.type !== 'CheckReceived'" (click)="openAllocate()" [disabled]="actionLoading"
+            class="px-4 py-[10px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+            <i class="fa-solid fa-link"></i> تخصيص الفواتير
+          </button>
+          <button *ngIf="p.status === 'Pending'" (click)="approvePayment()" [disabled]="actionLoading || (p.allocations.length === 0 && p.type !== 'AdvancePayment' && p.type !== 'CheckIssued' && p.type !== 'CheckReceived')"
+            [title]="(p.allocations.length === 0 && p.type !== 'AdvancePayment' && p.type !== 'CheckIssued' && p.type !== 'CheckReceived') ? 'خصّص فاتورة واحدة على الأقل قبل الاعتماد' : ''"
+            class="px-4 py-[10px] rounded-[9px] bg-primary text-white text-[13.5px] hover:bg-primary-dark transition cursor-pointer disabled:opacity-50">
+            <i class="fa-solid fa-check"></i> اعتماد
+          </button>
+          <button *ngIf="p.status === 'Approved'" (click)="postPayment()" [disabled]="actionLoading"
+            class="px-4 py-[10px] rounded-[9px] bg-primary text-white text-[13.5px] hover:bg-primary-dark transition cursor-pointer disabled:opacity-50">
+            <i class="fa-solid fa-book"></i> ترحيل
+          </button>
+          <button *ngIf="p.status === 'Pending' || p.status === 'Approved'" (click)="openCancel()" [disabled]="actionLoading"
+            class="px-4 py-[10px] rounded-[9px] border border-[#f3d4d4] bg-white text-danger text-[13.5px] hover:bg-[#fdeaea] transition cursor-pointer disabled:opacity-50">
+            <i class="fa-solid fa-ban"></i> إلغاء
+          </button>
+          <button *ngIf="p.status === 'Pending' || p.status === 'Approved' || p.status === 'Posted'" (click)="openEdit(p)" [disabled]="actionLoading"
+            class="px-4 py-[10px] rounded-[9px] border border-amber-200 bg-amber-50 text-amber-700 text-[13.5px] hover:bg-amber-100 transition cursor-pointer disabled:opacity-50">
+            <i class="fa-solid fa-pen-to-square"></i> تعديل الدفعة
+          </button>
+          <span *ngIf="p.status === 'Cancelled' || p.status === 'Reversed'"
+            class="text-[12px] text-muted">
+            <i class="fa-solid fa-lock text-[11px]"></i> لا توجد إجراءات متاحة على هذه الحالة
+          </span>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
+<!-- Cancel reason popover -->
+<div *ngIf="cancellingPayment"
+  class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+  (click)="closeCancel()">
+  <div class="bg-white rounded-[14px] border border-line w-full max-w-[420px] shadow-[0_20px_60px_rgba(0,0,0,.18)] p-[20px]"
+    (click)="$event.stopPropagation()">
+    <div class="text-[14px] font-bold mb-[4px]">إلغاء الدفعة</div>
+    <div class="text-[12.5px] text-muted mb-[14px]">{{ cancellingPayment.paymentNumber }}</div>
+
+    <label class="block text-[11.5px] text-muted mb-[4px]">سبب الإلغاء <span class="text-danger">*</span></label>
+    <textarea [(ngModel)]="cancelReason" rows="3" maxlength="500" placeholder="سبب إلغاء الدفعة…"
+      class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] outline-none focus:border-primary transition resize-none mb-[16px]"></textarea>
+
+    <div class="flex gap-[8px]">
+      <button (click)="confirmCancel()" [disabled]="actionLoading"
+        class="flex-1 px-4 py-[9px] rounded-[9px] bg-danger text-white text-[13.5px] hover:opacity-90 transition cursor-pointer disabled:opacity-50">
+        {{ actionLoading ? 'جارٍ الإلغاء…' : 'تأكيد الإلغاء' }}
+      </button>
+      <button (click)="closeCancel()"
+        class="px-4 py-[9px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer">
+        إغلاق
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Allocate invoices modal -->
+<div *ngIf="allocatingPayment"
+  class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[820px] shadow-[0_20px_60px_rgba(0,0,0,.18)] max-h-[92vh] overflow-y-auto">
+
+    <div class="flex items-center justify-between px-[22px] py-[16px] border-b border-[#f0f1f4]">
+      <div class="text-[16px] font-bold">تخصيص فواتير — {{ allocatingPayment.paymentNumber }}</div>
+      <button (click)="closeAllocate()"
+        class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px]">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="p-[22px]">
+
+      <!-- Balance summary -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-[10px] bg-[#f6f7f9] rounded-[9px] p-[14px] mb-[16px] text-center">
+        <div><span class="text-[11px] text-muted block mb-[2px]">مبلغ الدفعة</span><span class="font-semibold">{{ allocatingPayment.amount | number:'1.2-2' }}</span></div>
+        <div><span class="text-[11px] text-muted block mb-[2px]">مخصَّص سابقاً</span><span class="font-semibold">{{ existingAllocatedTotal | number:'1.2-2' }}</span></div>
+        <div><span class="text-[11px] text-muted block mb-[2px]">المتبقي للتخصيص</span><span class="font-bold text-[#5156be]">{{ remainingToAllocate | number:'1.2-2' }}</span></div>
+        <div>
+          <span class="text-[11px] text-muted block mb-[2px]">التخصيص الجديد</span>
+          <span class="font-bold" [ngClass]="allocationBalanced ? 'text-[#0e9f6e]' : 'text-danger'">{{ newPaymentTotal | number:'1.2-2' }}</span>
+        </div>
+      </div>
+
+      <div *ngIf="allocatingPayment.allocations.length" class="mb-[16px]">
+        <div class="text-[12.5px] font-semibold text-[#374151] mb-[8px]">فواتير مخصَّصة سابقاً (للقراءة فقط)</div>
+        <div class="rounded-[9px] overflow-hidden border border-[#e3e6ea]">
+          <table class="w-full text-[12.5px]">
+            <thead>
+              <tr class="bg-[#fafbfc] text-[11px] text-muted border-b border-[#e3e6ea]">
+                <th class="px-[10px] py-[7px] text-right font-semibold">الفاتورة</th>
+                <th class="px-[10px] py-[7px] text-center font-semibold">المخصَّص</th>
+                <th class="px-[10px] py-[7px] text-center font-semibold">الخصم</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let a of allocatingPayment.allocations" class="border-t border-[#f0f1f4]">
+                <td class="px-[10px] py-[6px] font-mono font-semibold">{{ a.invoiceNumber }}</td>
+                <td class="px-[10px] py-[6px] text-center font-mono">{{ a.allocatedAmount | number:'1.2-2' }}</td>
+                <td class="px-[10px] py-[6px] text-center font-mono text-[#0e9f6e]">{{ a.discountTaken | number:'1.2-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between mb-[10px]">
+        <div class="text-[12.5px] font-semibold text-[#374151]">فواتير متاحة للتخصيص</div>
+        <input [(ngModel)]="allocationSearch" placeholder="ابحث برقم الفاتورة..."
+          class="px-3 py-[7px] border border-line rounded-[9px] text-[12.5px] bg-white outline-none focus:border-primary w-[220px]" />
+      </div>
+
+      <div *ngIf="loadingAllocationInvoices" class="p-8 text-center text-muted">
+        <i class="fa-solid fa-spinner fa-spin text-[20px] block mb-2"></i>
+        جارٍ تحميل فواتير الطرف…
+      </div>
+
+      <div *ngIf="!loadingAllocationInvoices && filteredAllocationRows.length === 0" class="p-8 text-center text-[#b3b9c2] text-[12.5px]">
+        لا توجد فواتير متاحة للتخصيص لهذا الطرف
+      </div>
+
+      <div *ngIf="!loadingAllocationInvoices && filteredAllocationRows.length > 0" class="rounded-[9px] overflow-hidden border border-[#e3e6ea] mb-[16px]">
+        <div class="overflow-x-auto">
+        <table class="w-full text-[12.5px] min-w-[640px]">
+          <thead>
+            <tr class="bg-[#fafbfc] text-[11px] text-muted border-b border-[#e3e6ea]">
+              <th class="px-[10px] py-[8px] text-center font-semibold w-[36px]">
+                <input type="checkbox" [checked]="allFilteredAllocationSelected" (change)="toggleSelectAllAllocationRows()" />
+              </th>
+              <th class="px-[10px] py-[8px] text-right font-semibold">الفاتورة</th>
+              <th class="px-[10px] py-[8px] text-center font-semibold">الإجمالي</th>
+              <th class="px-[10px] py-[8px] text-center font-semibold">المتبقي على الفاتورة</th>
+              <th class="px-[10px] py-[8px] text-center font-semibold">المبلغ المخصَّص</th>
+              <th class="px-[10px] py-[8px] text-center font-semibold">الخصم</th>
+              <th class="px-[10px] py-[8px] text-center font-semibold">الرصيد بعد التخصيص</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of filteredAllocationRows" class="border-t border-[#f0f1f4] hover:bg-[#fafbfc]">
+              <td class="px-[10px] py-[6px] text-center">
+                <input type="checkbox" [checked]="row.selected" (change)="toggleAllocationRow(row)" />
+              </td>
+              <td class="px-[10px] py-[6px] font-mono font-semibold">{{ row.invoiceNumber }}</td>
+              <td class="px-[10px] py-[6px] text-center font-mono">{{ row.amount | number:'1.2-2' }}</td>
+              <td class="px-[10px] py-[6px] text-center font-mono">{{ row.outstanding | number:'1.2-2' }}</td>
+              <td class="px-[10px] py-[6px] text-center">
+                <input type="number" [(ngModel)]="row.allocatedAmount" [disabled]="!row.selected" min="0" step="0.01"
+                  class="w-[90px] px-[6px] py-[4px] border border-[#e3e6ea] rounded-[7px] text-center font-mono outline-none focus:border-primary disabled:bg-[#f6f7f9]" />
+              </td>
+              <td class="px-[10px] py-[6px] text-center">
+                <input type="number" [(ngModel)]="row.discountTaken" [disabled]="!row.selected" min="0" step="0.01"
+                  class="w-[80px] px-[6px] py-[4px] border border-[#e3e6ea] rounded-[7px] text-center font-mono outline-none focus:border-primary disabled:bg-[#f6f7f9]" />
+              </td>
+              <td class="px-[10px] py-[6px] text-center font-mono font-bold">{{ remainingAllocationBalance(row) | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="flex gap-[8px] pt-[10px] border-t border-[#f0f1f4]">
+        <button (click)="submitAllocation()" [disabled]="allocating || !allocationBalanced"
+          class="flex-1 px-4 py-[10px] rounded-[9px] bg-primary text-white text-[13.5px] hover:bg-primary-dark transition cursor-pointer disabled:opacity-50">
+          {{ allocating ? 'جارٍ الحفظ…' : 'حفظ التخصيص' }}
+        </button>
+        <button (click)="closeAllocate()"
+          class="px-4 py-[10px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer">
+          إلغاء
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Payment Modal -->
+<div *ngIf="editingPayment"
+  class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+  (click)="closeEdit()">
+  <div class="bg-white rounded-[14px] border border-line w-full max-w-[480px] shadow-[0_20px_60px_rgba(0,0,0,.18)] p-[20px]"
+    (click)="$event.stopPropagation()">
+    <div class="text-[14px] font-bold mb-[4px] flex items-center gap-[8px]">
+      <i class="fa-solid fa-pen-to-square text-[#c2790a]"></i>
+      تعديل الدفعة
+    </div>
+    <div class="text-[12.5px] text-muted mb-[14px]">
+      {{ editingPayment.partyName }} <span class="font-mono text-[11px]">({{ editingPayment.paymentNumber }})</span>
+    </div>
+
+    <div class="space-y-[12px] max-h-[65vh] overflow-y-auto pr-1">
+      <!-- Warning if Posted -->
+      <div *ngIf="editingPayment.status === 'Posted'" class="bg-[#fdf8e2] border border-[#f5d99a] rounded-[9px] p-[10px] text-[12px] text-[#c2790a] leading-relaxed">
+        <i class="fa-solid fa-lock"></i> هذه الدفعة <strong>مرحّلة</strong>. يمكنك فقط تعديل رقم الدفعة والمرجع. التعديلات المالية غير متاحة.
+      </div>
+
+      <!-- Payment Number -->
+      <div class="group">
+        <label class="block text-[12px] font-semibold text-[#374151] mb-[4px]">رقم الدفعة</label>
+        <input type="text" [(ngModel)]="editPaymentNumber"
+          class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13px] font-mono outline-none focus:border-primary transition" />
+      </div>
+
+      <!-- Amount -->
+      <div class="group">
+        <label class="block text-[12px] font-semibold text-[#374151] mb-[4px]">المبلغ</label>
+        <input type="number" [(ngModel)]="editPaymentAmount" [disabled]="editingPayment.status === 'Posted'" min="0.01" step="0.01"
+          class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13px] font-mono outline-none focus:border-primary transition disabled:bg-[#f6f7f9] disabled:text-muted" />
+        <div *ngIf="editingPayment.status !== 'Posted' && editingPayment.allocations.length > 0 && editPaymentAmount !== editingPayment.amount" 
+          class="text-danger text-[11px] mt-1">
+          <i class="fa-solid fa-triangle-exclamation"></i> تغيير المبلغ سيؤدي لحذف التخصيصات الحالية ({{ editingPayment.amount | number:'1.2-2' }}).
+        </div>
+      </div>
+
+      <!-- Date -->
+      <div class="group">
+        <label class="block text-[12px] font-semibold text-[#374151] mb-[4px]">تاريخ الدفعة</label>
+        <input type="date" [(ngModel)]="editPaymentDate" [disabled]="editingPayment.status === 'Posted'"
+          class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13px] outline-none focus:border-primary transition disabled:bg-[#f6f7f9] disabled:text-muted" />
+      </div>
+
+      <!-- Method -->
+      <div class="group">
+        <label class="block text-[12px] font-semibold text-[#374151] mb-[4px]">طريقة الدفع</label>
+        <app-select
+          [(ngModel)]="editPaymentMethod"
+          [options]="editMethodOptions.map(opt => ({value: opt.value, label: opt.label}))"
+          [disabled]="editingPayment.status === 'Posted'"
+          />
+      </div>
+
+      <!-- Type -->
+      <div class="group">
+        <label class="block text-[12px] font-semibold text-[#374151] mb-[4px]">نوع الدفعة</label>
+        <app-select
+          [(ngModel)]="editPaymentType"
+          [options]="editTypeOptions.map(opt => ({value: opt.value, label: opt.label}))"
+          [disabled]="editingPayment.status === 'Posted'"
+          />
+      </div>
+
+      <!-- Reference -->
+      <div class="group">
+        <label class="block text-[12px] font-semibold text-[#374151] mb-[4px]">المرجع</label>
+        <input type="text" [(ngModel)]="editPaymentReference" placeholder="رقم الشيك أو الحوالة..."
+          class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13px] outline-none focus:border-primary transition" />
+      </div>
+    </div>
+
+    <div class="flex gap-[8px] mt-[16px]">
+      <button (click)="saveEdit()" [disabled]="editPaymentLoading"
+        class="flex-1 px-4 py-[9px] rounded-[9px] bg-primary text-white text-[13.5px] hover:opacity-90 transition cursor-pointer disabled:opacity-50">
+        {{ editPaymentLoading ? 'جارٍ الحفظ…' : 'حفظ التعديلات' }}
+      </button>
+      <button (click)="closeEdit()" [disabled]="editPaymentLoading"
+        class="px-4 py-[9px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>

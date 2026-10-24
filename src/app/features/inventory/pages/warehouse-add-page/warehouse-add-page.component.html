@@ -1,0 +1,82 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="اضافة مخزن"
+      icon="fa-solid fa-warehouse">
+    </app-page-header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            اسم المخزن <span class="text-danger">*</span>
+          </label>
+          <input formControlName="nameAr" autofocus placeholder="مثال: المخزن الرئيسي"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('nameAr') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('nameAr')" class="text-[11px] text-danger mt-[4px]">اسم المخزن مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الفرع <span class="text-danger">*</span>
+          </label>
+          <app-select
+          formControlName="branchId"
+          [options]="[{value: '', label: '— اختر الفرع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="— اختر الفرع —"
+          [searchable]="true"
+          />
+          <div *ngIf="invalid('branchId')" class="text-[11px] text-danger mt-[4px]">الفرع مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الموقع <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <input formControlName="location" placeholder="مثال: المنطقة الصناعية الأولى"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            حساب المخزون <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <app-select
+          formControlName="inventoryAccountId"
+          [options]="[{value: '', label: '— الحساب الافتراضي (1600) —'}].concat(inventoryAccounts.map(a => ({value: a.id, label: a.accountCode + ' — ' + (a.nameAr || a.name)})))"
+          placeholder="— الحساب الافتراضي (1600) —"
+          />
+        </div>
+
+        <label class="col-span-1 md:col-span-2 flex items-center justify-between border border-[#e3e6ea] rounded-[10px] px-[14px] py-[12px] cursor-pointer">
+          <div>
+            <div class="text-[13.5px] font-semibold">السماح بالمخزون السالب</div>
+            <div class="text-[11.5px] text-muted mt-[2px]">يسمح بصرف كميات تتجاوز الرصيد المتاح فعلياً في هذا المخزن</div>
+          </div>
+          <input type="checkbox" formControlName="allowNegativeStock" class="w-[18px] h-[18px] accent-primary cursor-pointer" />
+        </label>
+
+      </div>
+
+      <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+        <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">
+          {{ saving ? 'جارٍ الحفظ…' : 'حفظ المخزن' }}
+        </app-button>
+        <app-button variant="ghost" routerLink="/inventory/warehouses/manage">إلغاء</app-button>
+      </div>
+    </form>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

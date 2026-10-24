@@ -1,0 +1,418 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="ادارة الحسابات البنكية"
+      icon="fa-solid fa-building-columns"
+      [subtitle]="'إجمالي: ' + accounts.length + ' حساب'">
+      <app-button variant="primary" icon="fa-solid fa-plus" (click)="openCreate()">إضافة حساب بنكي</app-button>
+    </app-page-header>
+
+    <!-- Search & filter bar -->
+    <div class="flex flex-wrap gap-[10px] mb-[14px]">
+      <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[9px] flex-1 min-w-[220px] shadow-sm">
+        <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+        <input [ngModel]="search" (ngModelChange)="onSearchChange($event)" placeholder="ابحث باسم البنك، رقم الحساب أو الآيبان..."
+          class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+        <button *ngIf="search" (click)="onSearchChange('')"
+          class="text-[#a3a8b2] hover:text-ink bg-transparent border-0 cursor-pointer text-[13px]">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <app-select
+          [(ngModel)]="branchFilter"
+          [options]="[{value: '', label: 'الكل — كل الفروع'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="الكل — كل الفروع"
+          (changed)="onFilterChange()"
+          [searchable]="true"
+          />
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm relative">
+      <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[12.5px] table-fixed min-w-[950px]">
+        <colgroup>
+          <col class="w-[5%]" />
+          <col class="w-[12%]" />
+          <col class="w-[15%]" />
+          <col class="w-[12%]" />
+          <col class="w-[13%]" />
+          <col class="w-[12%]" />
+          <col class="w-[12%]" />
+          <col class="w-[14%]" />
+          <col class="w-[8%]" />
+          <col class="w-[9%]" />
+        </colgroup>
+        <thead>
+          <tr class="bg-primary text-white text-[11.5px]">
+            <th class="px-[8px] py-[11px] text-right font-semibold">#</th>
+            <th class="px-2 py-[11px] text-right font-semibold">النوع</th>
+            <th class="px-2 py-[11px] text-right font-semibold">البنك/المحفظة</th>
+            <th class="px-2 py-[11px] text-right font-semibold">الفرع</th>
+            <th class="px-2 py-[11px] text-right font-semibold">اسم الحساب</th>
+            <th class="px-2 py-[11px] text-right font-semibold">رقم الحساب</th>
+            <th class="px-2 py-[11px] text-right font-semibold">الآيبان</th>
+            <th class="px-2 py-[11px] text-right font-semibold">الحساب المحاسبي</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الحالة</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          <ng-container *ngIf="loading">
+            <tr *ngFor="let _ of skeletonRows" class="border-t border-[#f1f2f4]">
+              <td class="px-[8px] py-[11px]" colspan="10">
+                <div class="h-[14px] w-full max-w-[95%] bg-[#eef0f3] rounded animate-pulse"></div>
+              </td>
+            </tr>
+          </ng-container>
+          <tr *ngFor="let a of accounts; let i = index" class="border-t border-[#f1f2f4] hover:bg-[#fafbfc] transition odd:bg-[#fcfcfd]">
+            <td class="px-[8px] py-[9px] text-muted text-[11.5px]">{{ i + 1 }}</td>
+            <td class="px-2 py-[9px] truncate">
+              <span class="px-[8px] py-[3px] rounded-full text-[11px] font-semibold whitespace-nowrap"
+                [ngClass]="a.type === 2 ? 'bg-purple-100 text-purple-800' : a.type === 3 ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'">
+                {{ a.type === 2 ? 'InstaPay' : a.type === 3 ? 'VodafoneCash' : 'Bank' }}
+              </span>
+            </td>
+            <td class="px-2 py-[9px] font-semibold truncate" [title]="a.bankNameAr || a.bankName">
+              {{ a.bankNameAr || a.bankName }}
+              <span class="text-[11px] text-muted block font-normal">{{ a.bankName }}</span>
+            </td>
+            <td class="px-2 py-[9px] text-[#5b626d] truncate" [title]="a.branchName">{{ a.branchName }}</td>
+            <td class="px-2 py-[9px] text-[#5b626d] truncate" [title]="a.accountName">{{ a.accountName }}</td>
+            <td class="px-2 py-[9px] text-[#5b626d] font-mono truncate" [title]="a.accountNumber">{{ a.accountNumber }}</td>
+            <td class="px-2 py-[9px] text-[#5b626d] font-mono truncate" [title]="a.iban || ''">{{ a.iban || '-' }}</td>
+            <td class="px-2 py-[9px] text-[#5b626d] truncate" [title]="a.accountNameInLedger">
+              <span class="font-mono font-semibold">{{ a.accountCode }}</span>
+            </td>
+            <td class="px-2 py-[9px] text-center">
+              <span class="px-[6px] py-[2px] rounded-full text-[10.5px] font-semibold whitespace-nowrap"
+                [ngClass]="a.isActive ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-700'">
+                {{ a.isActive ? 'نشط' : 'معطّل' }}
+              </span>
+            </td>
+            <td class="px-2 py-[9px] text-center">
+              <div class="flex items-center justify-center gap-[4px]">
+                <button (click)="viewDetails(a)" title="التفاصيل"
+                  class="w-[30px] h-[30px] rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[11px] cursor-pointer flex items-center justify-center">
+                  <i class="fa-solid fa-circle-info"></i>
+                </button>
+                <button (click)="openEdit(a)" title="تعديل"
+                  class="w-[30px] h-[30px] rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#fff8e1] hover:text-[#f59e0b] hover:border-[#fcd34d] transition text-[11px] cursor-pointer flex items-center justify-center">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button (click)="confirmDelete(a)" title="حذف"
+                  class="w-[30px] h-[30px] rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition text-[11px] cursor-pointer flex items-center justify-center">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div *ngIf="!loading && loadError" class="p-12 text-center text-danger">
+        <i class="fa-solid fa-triangle-exclamation text-[26px] block mb-3"></i>
+        تعذّر تحميل الحسابات البنكية.
+        <div class="mt-3">
+          <button (click)="loadAccounts()" class="text-primary-text text-[13px] font-semibold hover:underline bg-transparent border-0 cursor-pointer">
+            <i class="fa-solid fa-rotate-right text-[11px]"></i> إعادة المحاولة
+          </button>
+        </div>
+      </div>
+      <div *ngIf="!loading && !loadError && accounts.length === 0 && !hasActiveFilters" class="p-12 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-building-columns text-[30px] block mb-3 opacity-40"></i>
+        لا توجد حسابات بنكية بعد
+        <div class="mt-3">
+          <button (click)="openCreate()" class="text-primary-text text-[13px] font-semibold hover:underline bg-transparent border-0 cursor-pointer">
+            <i class="fa-solid fa-plus text-[11px]"></i> إضافة أول حساب بنكي
+          </button>
+        </div>
+      </div>
+      <div *ngIf="!loading && !loadError && accounts.length === 0 && hasActiveFilters" class="p-12 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-magnifying-glass text-[30px] block mb-3 opacity-40"></i>
+        لا توجد حسابات مطابقة لهذا البحث/الفلتر
+        <div class="mt-3">
+          <button (click)="resetFilters()" class="text-primary-text text-[13px] font-semibold hover:underline bg-transparent border-0 cursor-pointer">
+            <i class="fa-solid fa-rotate-right text-[11px]"></i> إعادة تعيين الفلاتر
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>
+
+<!-- Create bank account modal -->
+<div *ngIf="showCreateModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" (click)="closeCreate()">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[480px] shadow-[0_20px_60px_rgba(0,0,0,.18)] p-[22px]" (click)="$event.stopPropagation()">
+    <div class="text-[15px] font-bold mb-[16px] flex items-center gap-[8px]">
+      <i class="fa-solid fa-building-columns text-primary"></i> إضافة حساب بنكي
+    </div>
+
+    <form [formGroup]="createForm" (ngSubmit)="submitCreate()">
+      <div class="space-y-[14px]">
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الفرع <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="branchId"
+          [options]="[{value: '', label: '— اختر الفرع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="— اختر الفرع —"
+          [searchable]="true"
+          />
+          <div *ngIf="invalid('branchId')" class="text-[11px] text-danger mt-[4px]">الفرع مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">النوع <span class="text-danger">*</span></label>
+          <app-select
+          formControlName="type"
+          [options]="[{value: '', label: 'بنك (Bank)'}, {value: '', label: 'إنستا باي (InstaPay)'}, {value: '', label: 'فودافون كاش (VodafoneCash)'}]"
+          (changed)="onTypeChange()"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-[10px]">
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              {{ createForm.value.type === 1 ? 'اسم البنك (عربي)' : 'اسم المحفظة (عربي)' }} <span class="text-danger">*</span>
+            </label>
+            <input formControlName="bankNameAr" [placeholder]="createForm.value.type === 1 ? 'البنك الأهلي' : 'إنستا باي فرع 1'"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalid('bankNameAr') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              {{ createForm.value.type === 1 ? 'اسم البنك (إنجليزي)' : 'اسم المحفظة (إنجليزي)' }} <span class="text-danger">*</span>
+            </label>
+            <input formControlName="bankName" [placeholder]="createForm.value.type === 1 ? 'NBE' : 'InstaPay 1'"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalid('bankName') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+        </div>
+        <div *ngIf="invalid('bankNameAr') || invalid('bankName')" class="text-[11px] text-danger -mt-[8px]">
+          {{ createForm.value.type === 1 ? 'اسم البنك مطلوب (عربي وإنجليزي)' : 'اسم المحفظة مطلوب (عربي وإنجليزي)' }}
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            {{ createForm.value.type === 1 ? 'اسم صاحب الحساب' : 'اسم صاحب المحفظة' }} <span class="text-danger">*</span>
+          </label>
+          <input formControlName="accountName" placeholder="اسم الشركة أو الفرع"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('accountName') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('accountName')" class="text-[11px] text-danger mt-[4px]">اسم الحقل مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            {{ createForm.value.type === 1 ? 'رقم الحساب' : 'رقم الهاتف/الحساب' }} <span class="text-danger">*</span>
+          </label>
+          <input formControlName="accountNumber" [placeholder]="createForm.value.type === 1 ? '1234567890' : '01012345678'"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+            [ngClass]="invalid('accountNumber') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('accountNumber')" class="text-[11px] text-danger mt-[4px]">رقم الحساب مطلوب</div>
+        </div>
+
+        <div class="group" *ngIf="createForm.value.type === 1">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">IBAN <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span></label>
+          <input formControlName="iban" placeholder="EG380019000500000000263180002"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition uppercase"
+            [ngClass]="invalid('iban') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('iban')" class="text-[11px] text-danger mt-[4px]">صيغة IBAN غير صحيحة</div>
+        </div>
+
+        <div class="bg-[#f4f7ff] border border-[#dbe4ff] rounded-[9px] px-[12px] py-[9px] text-[11.5px] text-[#374151] flex items-start gap-[7px]">
+          <i class="fa-solid fa-circle-info text-primary mt-[1px]"></i>
+          سيتم إنشاء حساب محاسبي فرعي تلقائياً تحت حساب الصندوق (1100) أو البنك (1110).
+        </div>
+      </div>
+
+      <div class="flex gap-[8px] mt-[20px]">
+        <button type="submit" [disabled]="creating"
+          class="flex-1 px-4 py-[10px] rounded-[9px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-dark transition cursor-pointer disabled:opacity-50">
+          {{ creating ? 'جارٍ الإنشاء…' : 'إنشاء الحساب' }}
+        </button>
+        <button type="button" (click)="closeCreate()" [disabled]="creating"
+          class="px-4 py-[10px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+          إلغاء
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Details modal -->
+<div *ngIf="showDetailsModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" (click)="closeDetails()">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[440px] shadow-[0_20px_60px_rgba(0,0,0,.18)] p-[22px]" (click)="$event.stopPropagation()">
+    <div class="flex items-center justify-between mb-[16px]">
+      <div class="text-[15px] font-bold flex items-center gap-[8px]">
+        <i class="fa-solid fa-building-columns text-primary"></i> تفاصيل الحساب البنكي
+      </div>
+      <button (click)="closeDetails()"
+        class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px]">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div *ngIf="detailLoading" class="py-[30px] text-center text-muted">
+      <i class="fa-solid fa-spinner fa-spin text-[24px] block mb-2"></i>
+      جارٍ التحميل…
+    </div>
+
+    <div *ngIf="!detailLoading && detailError" class="py-[30px] text-center text-danger">
+      <i class="fa-solid fa-triangle-exclamation text-[24px] block mb-2"></i>
+      تعذّر تحميل التفاصيل
+    </div>
+
+    <div *ngIf="!detailLoading && !detailError && detailAccount as d" class="space-y-[10px] text-[13px]">
+      <div class="flex justify-between py-[8px] border-b border-[#f0f1f4]">
+        <span class="text-muted">النوع</span>
+        <span class="font-semibold">{{ getTypeLabel(d.type) }}</span>
+      </div>
+      <div class="flex justify-between py-[8px] border-b border-[#f0f1f4]">
+        <span class="text-muted">الاسم</span>
+        <span class="font-semibold">{{ d.bankNameAr }} — {{ d.bankName }}</span>
+      </div>
+      <div class="flex justify-between py-[8px] border-b border-[#f0f1f4]">
+        <span class="text-muted">الفرع</span>
+        <span class="font-semibold">{{ branchName(d.branchId) }}</span>
+      </div>
+      <div class="flex justify-between py-[8px] border-b border-[#f0f1f4]">
+        <span class="text-muted">اسم صاحب الحساب</span>
+        <span class="font-semibold">{{ d.accountName }}</span>
+      </div>
+      <div class="flex justify-between py-[8px] border-b border-[#f0f1f4]">
+        <span class="text-muted">رقم الحساب/الهاتف</span>
+        <span class="font-mono font-semibold">{{ d.accountNumber }}</span>
+      </div>
+      <div class="flex justify-between py-[8px] border-b border-[#f0f1f4]" *ngIf="d.type === 1">
+        <span class="text-muted">الآيبان</span>
+        <span class="font-mono font-semibold">{{ d.iban || '-' }}</span>
+      </div>
+      <div class="flex justify-between py-[8px] border-b border-[#f0f1f4]">
+        <span class="text-muted">الحساب المحاسبي</span>
+        <span class="font-mono font-semibold">{{ d.accountCode }} — {{ d.accountNameInLedger }}</span>
+      </div>
+      <div class="flex justify-between py-[8px] border-b border-[#f0f1f4]">
+        <span class="text-muted">الحالة</span>
+        <span class="px-[6px] py-[2px] rounded-full text-[10.5px] font-semibold"
+          [ngClass]="d.isActive ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-700'">
+          {{ d.isActive ? 'نشط' : 'معطّل' }}
+        </span>
+      </div>
+      <div class="flex justify-between py-[8px] border-b border-[#f0f1f4]">
+        <span class="text-muted">تاريخ الإنشاء</span>
+        <span class="font-semibold">{{ detailCreatedAt }}</span>
+      </div>
+      <div class="flex justify-between py-[8px]">
+        <span class="text-muted">أُنشئ بواسطة</span>
+        <span class="font-semibold">{{ detailCreatedBy }}</span>
+      </div>
+    </div>
+
+    <button (click)="closeDetails()"
+      class="w-full mt-[18px] px-4 py-[10px] rounded-[9px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-dark transition cursor-pointer">
+      إغلاق
+    </button>
+  </div>
+</div>
+
+<!-- Edit bank account modal -->
+<div *ngIf="showEditModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" (click)="closeEdit()">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[480px] shadow-[0_20px_60px_rgba(0,0,0,.18)] p-[22px]" (click)="$event.stopPropagation()">
+    <div class="text-[15px] font-bold mb-[16px] flex items-center gap-[8px]">
+      <i class="fa-solid fa-building-columns text-primary"></i> تعديل حساب بنكي
+    </div>
+
+    <form [formGroup]="editForm" (ngSubmit)="submitEdit()">
+      <div class="space-y-[14px]">
+        <div class="grid grid-cols-2 gap-[10px]">
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">اسم البنك (عربي) <span class="text-danger">*</span></label>
+            <input formControlName="bankNameAr" placeholder="البنك الأهلي"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalidEdit('bankNameAr') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">اسم البنك (إنجليزي) <span class="text-danger">*</span></label>
+            <input formControlName="bankName" placeholder="NBE"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalidEdit('bankName') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+        </div>
+        <div *ngIf="invalidEdit('bankNameAr') || invalidEdit('bankName')" class="text-[11px] text-danger -mt-[8px]">
+          اسم البنك مطلوب (عربي وإنجليزي)
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">اسم صاحب الحساب <span class="text-danger">*</span></label>
+          <input formControlName="accountName" placeholder="اسم الشركة أو الفرع"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalidEdit('accountName') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalidEdit('accountName')" class="text-[11px] text-danger mt-[4px]">اسم الحقل مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">رقم الحساب <span class="text-danger">*</span></label>
+          <input formControlName="accountNumber" placeholder="1234567890"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+            [ngClass]="invalidEdit('accountNumber') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalidEdit('accountNumber')" class="text-[11px] text-danger mt-[4px]">رقم الحساب مطلوب</div>
+        </div>
+
+        <div class="group" *ngIf="editTarget?.type === 1">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">IBAN <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span></label>
+          <input formControlName="iban" placeholder="EG380019000500000000263180002"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition uppercase"
+            [ngClass]="invalidEdit('iban') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalidEdit('iban')" class="text-[11px] text-danger mt-[4px]">صيغة IBAN غير صحيحة</div>
+        </div>
+
+        <label class="flex items-center gap-[8px] cursor-pointer">
+          <input type="checkbox" formControlName="isActive" class="accent-primary w-4 h-4" />
+          <span class="text-[13px]">نشط</span>
+        </label>
+      </div>
+
+      <div class="flex gap-[8px] mt-[20px]">
+        <button type="submit" [disabled]="editing"
+          class="flex-1 px-4 py-[10px] rounded-[9px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-dark transition cursor-pointer disabled:opacity-50">
+          {{ editing ? 'جارٍ الحفظ…' : 'حفظ التعديلات' }}
+        </button>
+        <button type="button" (click)="closeEdit()" [disabled]="editing"
+          class="px-4 py-[10px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+          إلغاء
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete confirmation -->
+<div *ngIf="showDeleteModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" (click)="closeDelete()">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[380px] shadow-[0_20px_60px_rgba(0,0,0,.18)] p-[22px] text-center" (click)="$event.stopPropagation()">
+    <i class="fa-solid fa-triangle-exclamation text-red-500 text-[32px] block mb-[12px]"></i>
+    <div class="text-[15px] font-bold mb-[8px]">حذف الحساب البنكي</div>
+    <div class="text-[13px] text-[#5b626d] mb-[18px]">هل أنت متأكد من حذف الحساب <span class="font-bold">{{ deleteTarget?.bankNameAr }}</span>؟ لا يمكن التراجع عن هذا الإجراء.</div>
+    <div class="flex gap-[8px]">
+      <button (click)="executeDelete()" [disabled]="deleting"
+        class="flex-1 px-4 py-[10px] rounded-[9px] bg-red-600 text-white text-[13.5px] font-semibold hover:bg-red-700 transition cursor-pointer disabled:opacity-50">
+        {{ deleting ? 'جارٍ الحذف…' : 'نعم، حذف' }}
+      </button>
+      <button (click)="closeDelete()" [disabled]="deleting"
+        class="flex-1 px-4 py-[10px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>

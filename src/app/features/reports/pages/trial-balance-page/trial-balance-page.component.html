@@ -1,0 +1,169 @@
+<app-page-header
+  title="ميزان المراجعة (كشف الحساب بالأرصدة)"
+  subtitle="Trial Balance / Chart of Accounts Balances"
+  icon="fa-solid fa-scale-balanced">
+</app-page-header>
+
+<!-- Filters -->
+<div class="rev-exp-filters print:hidden">
+  <div class="filter-row">
+    <div class="filter-group">
+      <label>الفترة المالية</label>
+      <app-select
+          [(ngModel)]="selectedPeriodId"
+          [options]="[{value: '', label: 'اختر الفترة...'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode})))"
+          placeholder="اختر الفترة..."
+          (changed)="loadReport()"
+          [disabled]="periodsLoading"
+          />
+    </div>
+
+    <div class="filter-actions">
+      <button class="btn-primary" (click)="loadReport()" [disabled]="loading || !selectedPeriodId">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        عرض التقرير
+      </button>
+      <button type="button" class="btn-preview-pdf" (click)="previewPdf()" [disabled]="!selectedPeriodId || pdfLoading">
+        <i class="fa-solid" [ngClass]="pdfLoading ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i>
+        معاينة PDF
+      </button>
+      <button class="btn-outline" (click)="printReport()" [disabled]="!report">
+        <i class="fa-solid fa-print"></i>
+        طباعة
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div *ngIf="loading" class="loading-state">
+  <i class="fa-solid fa-spinner fa-spin"></i>
+  <span>جاري تحميل التقرير...</span>
+</div>
+
+<!-- Error -->
+<div *ngIf="error" class="error-state">
+  <i class="fa-solid fa-circle-exclamation"></i>
+  <span>{{ error }}</span>
+</div>
+
+<!-- Report Content -->
+<div *ngIf="report && !loading" class="report-content">
+
+  <!-- Summary Cards -->
+  <div class="summary-cards print:hidden">
+    <div class="summary-card revenue">
+      <div class="card-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+      <div class="card-body">
+        <span class="card-label">إجمالي الأرصدة المدينة</span>
+        <span class="card-value">{{ formatCurrency(report.totalDebits) }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card gross">
+      <div class="card-icon"><i class="fa-solid fa-arrow-trend-down"></i></div>
+      <div class="card-body">
+        <span class="card-label">إجمالي الأرصدة الدائنة</span>
+        <span class="card-value">{{ formatCurrency(report.totalCredits) }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card" [ngClass]="report.isBalanced ? 'net' : 'net negative'">
+      <div class="card-icon">
+        <i class="fa-solid" [ngClass]="report.isBalanced ? 'fa-scale-balanced' : 'fa-scale-unbalanced'"></i>
+      </div>
+      <div class="card-body">
+        <span class="card-label">الفارق</span>
+        <span class="card-value">{{ formatCurrency(report.difference) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unified Professional Print Header -->
+  <app-invoice-print-header
+    documentTitle="ميزان المراجعة العام بالأرصدة"
+    [documentSubtitle]="'الفترة المالية: ' + (report.periodCode || '—')"
+    [printedAt]="today"
+    class="hidden print:block mb-4"
+  ></app-invoice-print-header>
+
+  <!-- Lines -->
+  <div *ngIf="!report.lines.length" class="text-center text-[12.5px] text-[#b3b9c2] py-[20px]">
+    <i class="fa-solid fa-inbox text-[22px] block mb-2 opacity-40"></i>
+    لا توجد حسابات أو أرصدة في هذه الفترة
+  </div>
+
+  <div *ngIf="report.lines.length" class="rounded-[9px] overflow-hidden border border-[#e3e6ea] bg-white print:border-[#333]">
+    <div class="overflow-x-auto">
+      <table class="w-full text-[13px] border-collapse print:text-[11px]">
+        <thead>
+          <tr class="bg-[#fafbfc] border-b border-[#e3e6ea] print:bg-[#eee] print:border-b-2 print:border-black">
+            <th class="px-4 py-3 text-right font-semibold w-[150px]">كود الحساب</th>
+            <th class="px-4 py-3 text-right font-semibold">اسم الحساب</th>
+            <th class="px-4 py-3 text-center font-semibold w-[120px]">نوع الحساب</th>
+            <th class="px-4 py-3 text-center font-semibold w-[150px]">مدين</th>
+            <th class="px-4 py-3 text-center font-semibold w-[150px]">دائن</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let acc of report.lines" 
+              class="border-t border-[#f0f1f4] hover:bg-[#fafbfc] print:border-t print:border-[#ccc]"
+              [ngClass]="{'font-bold bg-[#fcfcfd]': !acc.isLeaf}">
+            
+            <td class="px-4 py-3 font-mono font-semibold text-right">
+              {{ acc.accountCode }}
+            </td>
+            
+            <td class="px-4 py-3 text-right" [style.paddingRight.px]="acc.level * 16 + 16">
+              <!-- Leaf accounts are clickable to view detailed statements -->
+              <a *ngIf="acc.isLeaf" 
+                 [routerLink]="['/reports/account-ledger', $any(acc).accountId]" 
+                 [queryParams]="{ periodId: report.periodId }"
+                 class="text-primary hover:underline cursor-pointer">
+                {{ acc.accountNameAr || acc.accountName }}
+              </a>
+              <span *ngIf="!acc.isLeaf">
+                {{ acc.accountNameAr || acc.accountName }}
+              </span>
+            </td>
+
+            <td class="px-4 py-3 text-center text-muted">
+              {{ acc.accountType }}
+            </td>
+
+            <td class="px-4 py-3 text-center font-mono" 
+                [ngClass]="acc.debitBalance > 0 ? 'text-danger font-semibold' : 'text-muted'">
+              {{ acc.debitBalance > 0 ? formatCurrency(acc.debitBalance) : '0.00' }}
+            </td>
+
+            <td class="px-4 py-3 text-center font-mono" 
+                [ngClass]="acc.creditBalance > 0 ? 'text-[#0e9f6e] font-semibold' : 'text-muted'">
+              {{ acc.creditBalance > 0 ? formatCurrency(acc.creditBalance) : '0.00' }}
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr class="border-t-2 border-black bg-[#f6f7f9] font-bold text-[14px] print:bg-white print:border-t-2 print:border-black">
+            <td class="px-4 py-3 text-right" colspan="3">إجمالي الأرصدة</td>
+            <td class="px-4 py-3 text-center font-mono text-danger">{{ formatCurrency(report.totalDebits) }}</td>
+            <td class="px-4 py-3 text-center font-mono text-[#0e9f6e]">{{ formatCurrency(report.totalCredits) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<app-pdf-preview-modal
+  [isOpen]="pdfModalOpen"
+  title="معاينة ميزان المراجعة (PDF)"
+  subtitle="Trial Balance"
+  [pdfUrl]="pdfUrl"
+  [fileName]="pdfFileName"
+  [loading]="pdfLoading"
+  [error]="pdfError"
+  (close)="closePdfModal()"
+  (download)="downloadPdf()"
+  (print)="printReport()"
+  (retry)="previewPdf()"
+></app-pdf-preview-modal>

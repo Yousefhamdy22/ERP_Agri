@@ -1,0 +1,92 @@
+<div class="relative">
+
+  <!-- ── Closed state ── -->
+  <div *ngIf="!open" (click)="toggle()"
+    class="w-full flex items-center justify-between px-[11px] py-[9px] border rounded-[9px] text-[13.5px] bg-white cursor-pointer text-right transition-colors duration-150"
+    [ngClass]="invalid ? 'border-danger' : 'border-[#e3e6ea]'">
+    <span class="truncate" [ngClass]="selectedLabel ? 'text-[#1e2330]' : 'text-[#b3b9c2]'">
+      {{ selectedLabel || placeholder }}
+    </span>
+    <div class="flex items-center gap-[8px] shrink-0 ms-2">
+      <button *ngIf="selectedLabel && !disabled" type="button" (click)="clear($event)"
+        class="text-[#b3b9c2] hover:text-danger bg-transparent border-0 cursor-pointer p-0 leading-none">
+        <i class="fa-solid fa-xmark text-[12px]"></i>
+      </button>
+      <i class="fa-solid fa-magnifying-glass text-[12px] text-[#b3b9c2]"></i>
+    </div>
+  </div>
+
+  <!-- ── Open state: search input ── -->
+  <input *ngIf="open" #searchInput
+    [ngModel]="query" (ngModelChange)="onQueryChange($event)" [ngModelOptions]="{standalone:true}"
+    [placeholder]="placeholder" autofocus
+    class="relative z-[58] w-full px-[11px] py-[9px] border border-primary rounded-[9px] text-[13.5px] outline-none"
+    (keydown.escape)="close()"
+    (keydown.arrowdown)="onArrowDown($event)"
+    (keydown.arrowup)="onArrowUp($event)"
+    (keydown.enter)="onEnter($event)" />
+
+  <!-- ── Backdrop ── -->
+  <div *ngIf="open" class="fixed inset-0 z-[55]" (click)="close()"></div>
+
+  <!-- ── Results dropdown ── -->
+  <div *ngIf="open"
+    class="absolute top-[calc(100%+4px)] right-0 left-0 z-[60] bg-white border border-[#e3e6ea] rounded-[11px] shadow-[0_10px_32px_rgba(0,0,0,.13)] max-h-[320px] overflow-y-auto">
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="p-[16px] text-center text-muted text-[12.5px]">
+      <i class="fa-solid fa-spinner fa-spin"></i> جارٍ البحث…
+    </div>
+
+    <!-- No results -->
+    <div *ngIf="!loading && query.trim() && !filteredItems.length" class="p-[16px] text-center text-[#b3b9c2] text-[12.5px]">
+      لا توجد نتائج لـ "{{ query }}"
+    </div>
+
+    <!-- Empty list -->
+    <div *ngIf="!loading && !query.trim() && !filteredItems.length" class="p-[16px] text-center text-[#b3b9c2] text-[12px]">
+      <i class="fa-solid fa-inbox text-[16px] block mb-2 opacity-40"></i>
+      {{ emptyMessage }}
+    </div>
+
+    <!-- Recent selections -->
+    <div *ngIf="!loading && !query.trim() && recentItems.length">
+      <div class="px-[13px] pt-[8px] pb-[4px]">
+        <div class="text-[10px] text-[#8a909c] font-semibold">آخر الاختيارات</div>
+      </div>
+      <div *ngFor="let item of recentItems" (click)="select(item)"
+        class="flex items-center gap-[10px] px-[13px] py-[8px] cursor-pointer border-b border-[#f4f5f7] last:border-b-0 transition-colors duration-100 hover:bg-[#f5f6fa]">
+        <i class="fa-solid fa-clock-rotate-left text-[10px] text-[#c4c8cf]"></i>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-[8px]">
+            <span *ngIf="item.code" class="font-mono text-[11px] text-[#8a909c] shrink-0 bg-[#f3f4f7] px-[6px] py-[1px] rounded">{{ item.code }}</span>
+            <span class="text-[13px] font-semibold truncate">{{ item.label }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="border-b border-[#e3e6ea]"></div>
+    </div>
+
+    <!-- Items -->
+    <div *ngFor="let item of filteredItems; let i = index" (click)="select(item)"
+      class="flex items-center gap-[10px] px-[13px] py-[10px] cursor-pointer border-b border-[#f4f5f7] last:border-b-0 transition-colors duration-100"
+      [ngClass]="i === highlightIndex ? 'bg-[#eef0fb]' : 'hover:bg-[#f5f6fa]'">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-[8px]">
+          <span *ngIf="item.code" class="font-mono text-[11px] text-[#8a909c] shrink-0 bg-[#f3f4f7] px-[6px] py-[1px] rounded">{{ item.code }}</span>
+          <span class="text-[13px] font-semibold truncate" [innerHTML]="highlightMatch(item.label)"></span>
+        </div>
+        <div *ngIf="item.subLabel || item.extra" class="text-[11px] text-muted mt-[2px] flex items-center gap-[8px]">
+          <span *ngIf="item.subLabel">{{ item.subLabel }}</span>
+          <span *ngIf="item.extra" class="flex items-center gap-[4px]">
+            <i class="fa-solid fa-phone text-[9px]"></i> {{ item.extra }}
+          </span>
+        </div>
+      </div>
+      <div *ngIf="item.numericValue != null" class="text-[12px] font-mono font-bold text-primary-text shrink-0 text-left">
+        <div>{{ item.numericValue | number:'1.2-2' }}</div>
+        <div *ngIf="item.numericLabel" class="text-[10px] text-muted font-normal">{{ item.numericLabel }}</div>
+      </div>
+    </div>
+  </div>
+</div>

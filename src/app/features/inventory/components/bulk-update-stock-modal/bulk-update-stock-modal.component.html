@@ -1,0 +1,224 @@
+<div class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" (click)="close()">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[640px] shadow-[0_20px_60px_rgba(0,0,0,.18)] max-h-[92vh] overflow-y-auto" (click)="$event.stopPropagation()">
+
+    <div class="flex items-center justify-between px-[22px] py-[16px] border-b border-[#f0f1f4]">
+      <div class="flex items-center gap-[10px]">
+        <i class="fa-solid fa-file-excel text-[#0e9f6e] text-[18px]"></i>
+        <div class="text-[16px] font-bold">تحديث كميات المخزون من إكسيل</div>
+      </div>
+      <button (click)="close()"
+        class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px]">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="flex items-center gap-[8px] px-[22px] pt-[16px]" *ngIf="step !== 3">
+      <div class="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[12px] font-bold"
+        [ngClass]="step >= 1 ? 'bg-primary text-white' : 'bg-[#f0f1f4] text-[#a3a8b2]'">1</div>
+      <div class="w-[40px] h-[2px]" [ngClass]="step > 1 ? 'bg-primary' : 'bg-[#f0f1f4]'"></div>
+      <div class="w-[26px] h-[26px] rounded-full flex items-center justify-center text-[12px] font-bold"
+        [ngClass]="step >= 2 ? 'bg-primary text-white' : 'bg-[#f0f1f4] text-[#a3a8b2]'">2</div>
+      <span class="text-[12px] text-muted ms-2">{{ step === 1 ? 'تحديد المستودع' : 'رفع الملف' }}</span>
+    </div>
+
+    <div class="p-[22px]">
+
+      <!-- Step 1: Configuration -->
+      <ng-container *ngIf="step === 1">
+        <div class="mb-[14px]">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الفرع <span class="text-danger">*</span></label>
+          <app-select
+          [(ngModel)]="branchId"
+          [options]="[{value: '', label: '— اختر الفرع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="— اختر الفرع —"
+          (changed)="onBranchChange()"
+          [searchable]="true"
+          />
+        </div>
+
+        <div class="mb-[20px]">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">المستودع / المخزن <span class="text-danger">*</span></label>
+          <app-select
+          [(ngModel)]="warehouseId"
+          [options]="[{value: '', label: '— اختر المستودع —'}].concat(warehouses.map(w => ({value: w.warehouseId, label: w.name})))"
+          placeholder="— اختر المستودع —"
+          [disabled]="!branchId || !warehouses.length"
+          [searchable]="true"
+          />
+          <div *ngIf="branchId && !warehouses.length" class="text-[11.5px] text-danger mt-[5px]">
+            لا توجد مستودعات نشطة في هذا الفرع. الرجاء إضافة مستودع أولاً.
+          </div>
+        </div>
+
+        <button (click)="downloadTemplate()"
+          class="w-full flex items-center justify-center gap-[8px] px-4 py-[11px] rounded-[9px] border border-[#e3e6ea] bg-white text-[#4b5563] text-[13.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer mb-[10px]">
+          <i class="fa-solid fa-download"></i> تحميل القالب الفارغ (SKU & Quantity)
+        </button>
+
+        <button (click)="goToUpload()" [disabled]="!branchId || !warehouseId"
+          class="w-full px-4 py-[11px] rounded-[9px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-dark transition cursor-pointer disabled:opacity-50">
+          التالي: رفع الملف <i class="fa-solid fa-arrow-left text-[11px]"></i>
+        </button>
+      </ng-container>
+
+      <!-- Step 2: Upload -->
+      <ng-container *ngIf="step === 2">
+        <div
+          (drop)="onDrop($event)" (dragover)="onDragOver($event)" (dragleave)="onDragLeave()"
+          class="border-2 border-dashed rounded-[12px] p-[24px] text-center transition mb-[16px]"
+          [ngClass]="dragging ? 'border-primary bg-primary-soft/30' : 'border-[#e3e6ea]'">
+
+          <ng-container *ngIf="!selectedFile">
+            <i class="fa-solid fa-cloud-arrow-up text-[32px] text-[#c3c8d0] block mb-[10px]"></i>
+            <div class="text-[13px] text-[#5b626d] mb-[10px]">اسحب ملف تحديث الكميات هنا أو</div>
+            <label class="inline-block px-4 py-[9px] rounded-[9px] bg-primary text-white text-[12.5px] font-semibold cursor-pointer hover:bg-primary-dark transition">
+              اختر ملفاً
+              <input type="file" accept=".xlsx,.csv" (change)="onFileSelected($event)" class="hidden" />
+            </label>
+            <div class="text-[11px] text-muted mt-[10px]">xlsx. أو csv. — حتى 5 ميجابايت</div>
+          </ng-container>
+
+          <div *ngIf="selectedFile" class="flex items-center justify-between bg-white border border-[#e3e6ea] rounded-[9px] px-[14px] py-[12px]">
+            <div class="flex items-center gap-[10px]">
+              <i class="fa-solid fa-file-excel text-[#0e9f6e] text-[22px]"></i>
+              <div class="text-right">
+                <div class="text-[13px] font-semibold truncate max-w-[280px]">{{ selectedFile.name }}</div>
+                <div class="text-[11px] text-muted">{{ formatSize(selectedFile.size) }}</div>
+              </div>
+            </div>
+            <button (click)="removeFile()" class="text-[#a3a8b2] hover:text-danger bg-transparent border-0 cursor-pointer text-[15px]">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-[#fafbfc] border border-[#f0f1f4] rounded-[10px] px-[14px] py-[12px] text-[12px] text-muted mb-[18px]">
+          <div class="flex justify-between py-[2px]">
+            <span>الفرع المستهدف:</span>
+            <span class="font-semibold text-ink">
+              {{ getBranchName(branchId) }}
+            </span>
+          </div>
+          <div class="flex justify-between py-[2px]">
+            <span>المخزن المستهدف:</span>
+            <span class="font-semibold text-ink">
+              {{ getWarehouseName(warehouseId) }}
+            </span>
+          </div>
+        </div>
+
+        <div *ngIf="uploading" class="mb-[14px]">
+          <div class="flex justify-between text-[11.5px] text-muted mb-[5px]">
+            <span>جارٍ الرفع والمعالجة…</span>
+            <span class="font-semibold ltr-num">{{ uploadPercent }}%</span>
+          </div>
+          <div class="h-[6px] rounded-full bg-[#f0f1f4] overflow-hidden">
+            <div class="h-full bg-primary transition-all duration-150" [style.width.%]="uploadPercent"></div>
+          </div>
+        </div>
+
+        <div class="flex gap-[10px]">
+          <button (click)="step = 1" [disabled]="uploading"
+            class="px-4 py-[11px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+            رجوع
+          </button>
+          <button (click)="submit()" [disabled]="!selectedFile || uploading"
+            class="flex-1 px-4 py-[11px] rounded-[9px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-dark transition cursor-pointer disabled:opacity-50">
+            <i class="fa-solid" [ngClass]="uploading ? 'fa-spinner fa-spin' : 'fa-file-import'"></i>
+            {{ uploading ? 'جارٍ التحديث…' : 'تحديث الكميات الآن' }}
+          </button>
+        </div>
+      </ng-container>
+
+      <!-- Step 3: Result -->
+      <ng-container *ngIf="step === 3 && result as r">
+        <div class="text-center mb-[18px]">
+          <ng-container [ngSwitch]="outcome">
+            <i *ngSwitchCase="'success'" class="fa-solid fa-circle-check text-[#0e9f6e] text-[38px] block mb-[10px]"></i>
+            <i *ngSwitchCase="'partial'" class="fa-solid fa-triangle-exclamation text-[#e0a818] text-[38px] block mb-[10px]"></i>
+            <i *ngSwitchCase="'failure'" class="fa-solid fa-circle-xmark text-danger text-[38px] block mb-[10px]"></i>
+          </ng-container>
+          <div class="text-[15px] font-bold"
+            [ngClass]="outcome === 'failure' ? 'text-danger' : ''">
+            {{ outcome === 'success' ? 'تم تحديث الكميات بنجاح' : outcome === 'partial' ? 'اكتمل التحديث مع وجود بعض الأخطاء' : 'فشل تحديث الكميات' }}
+          </div>
+          <div class="text-[12px] text-muted mt-[3px]">
+            {{ outcome === 'failure'
+              ? 'لم يتم تحديث أي صنف من إجمالي ' + r.total + ' صف — راجع الأخطاء أدناه'
+              : 'من إجمالي ' + r.total + ' صف في الملف تم تحديثها بنجاح' }}
+          </div>
+        </div>
+
+        <div *ngIf="commonErrorMessage" class="bg-[#fdeaea] border border-[#f3d4d4] rounded-[10px] px-[14px] py-[11px] mb-[14px] text-[12.5px] text-danger flex items-start gap-[8px]">
+          <i class="fa-solid fa-circle-info mt-[2px]"></i>
+          <div><span class="font-semibold">السبب الشائع للأخطاء: </span>{{ commonErrorMessage }}</div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-[10px] mb-[14px]">
+          <div class="bg-[#eef1fd] rounded-[9px] p-[12px] text-center">
+            <div class="text-[18px] font-bold text-[#5156be]">{{ r.total }}</div>
+            <div class="text-[11px] text-muted mt-[2px]">إجمالي الصفوف</div>
+          </div>
+          <div class="bg-[#eaf7f1] rounded-[9px] p-[12px] text-center">
+            <div class="text-[18px] font-bold text-[#0e9f6e]">{{ r.updated }}</div>
+            <div class="text-[11px] text-muted mt-[2px]">تم تحديثها</div>
+          </div>
+          <div class="bg-[#fdf6e3] rounded-[9px] p-[12px] text-center">
+            <div class="text-[18px] font-bold text-[#8a6d1a]">{{ r.skipped }}</div>
+            <div class="text-[11px] text-muted mt-[2px]">متطابقة (تخطّي)</div>
+          </div>
+        </div>
+
+        <!-- Progress Distribution Bar -->
+        <div *ngIf="r.total > 0" class="mb-[18px]">
+          <div class="h-[9px] rounded-full overflow-hidden flex bg-[#f0f1f4]">
+            <div class="h-full bg-[#0e9f6e]" [style.width.%]="(r.updated / r.total) * 100"></div>
+            <div class="h-full bg-[#e0a818]" [style.width.%]="(r.skipped / r.total) * 100"></div>
+            <div class="h-full bg-danger" [style.width.%]="(r.errors.length / r.total) * 100"></div>
+          </div>
+          <div class="flex justify-between text-[10.5px] text-muted mt-[5px]">
+            <span>نسبة النجاح والتطابق</span>
+            <span class="font-semibold ltr-num">{{ (((r.updated + r.skipped) / r.total) * 100).toFixed(0) }}%</span>
+          </div>
+        </div>
+
+        <div *ngIf="r.errors.length" class="mb-[18px]">
+          <div class="flex items-center justify-between mb-[8px]">
+            <div class="text-[12.5px] font-bold text-danger">
+              <i class="fa-solid fa-triangle-exclamation"></i> أخطاء ({{ r.errors.length }})
+            </div>
+            <button (click)="downloadErrorsReport()"
+              class="text-[11.5px] font-semibold text-primary bg-transparent border-0 cursor-pointer hover:underline flex items-center gap-[5px]">
+              <i class="fa-solid fa-download"></i> تنزيل تقرير الأخطاء
+            </button>
+          </div>
+          <div class="border border-[#f3d4d4] rounded-[9px] overflow-hidden max-h-[200px] overflow-auto">
+            <table class="w-full text-[12px] min-w-[400px]">
+              <thead>
+                <tr class="bg-[#fdeaea] text-[11px] text-danger">
+                  <th class="px-[10px] py-[7px] text-right font-semibold">الصف</th>
+                  <th class="px-[10px] py-[7px] text-right font-semibold">SKU</th>
+                  <th class="px-[10px] py-[7px] text-right font-semibold">رسالة الخطأ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let e of r.errors" class="border-t border-[#f3d4d4]">
+                  <td class="px-[10px] py-[7px] text-muted">{{ e.rowNumber }}</td>
+                  <td class="px-[10px] py-[7px] font-mono">{{ e.sku }}</td>
+                  <td class="px-[10px] py-[7px] text-danger">{{ e.errorMessage || 'خطأ غير معروف' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <button (click)="close()"
+          class="w-full px-4 py-[11px] rounded-[9px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-dark transition cursor-pointer">
+          إغلاق
+        </button>
+      </ng-container>
+
+    </div>
+  </div>
+</div>

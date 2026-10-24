@@ -1,0 +1,252 @@
+<div class="pt-5 print:hidden">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="ادارة دفاتر المشتريات"
+      icon="fa-solid fa-book"
+      [subtitle]="'إجمالي: ' + total + ' قيد'">
+    </app-page-header>
+
+    <!-- Filters -->
+    <div class="mb-[16px] bg-white border border-line rounded-[13px] p-[16px] shadow-sm">
+      <div class="flex flex-wrap gap-[10px] items-center">
+
+        <app-select
+          [(ngModel)]="periodId"
+          [options]="[{value: '', label: 'كل الفترات المالية'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode})))"
+          placeholder="كل الفترات المالية"
+          (changed)="onPeriodChange()"
+          />
+
+        <app-select
+          [(ngModel)]="type"
+          [options]="typeOptions.map(t => ({value: t.value, label: t.label}))"
+          (changed)="onFilterChange()"
+          />
+
+        <app-select
+          [(ngModel)]="status"
+          [options]="statusOptions.map(s => ({value: s.value, label: s.label}))"
+          (changed)="onFilterChange()"
+          />
+
+        <div class="flex items-center gap-[6px]">
+          <label class="text-[12px] text-muted">من التاريخ</label>
+          <input type="date" [(ngModel)]="fromDate" (ngModelChange)="onFilterChange()"
+            class="px-3 py-[9px] border border-line rounded-[9px] text-[13px] bg-white outline-none focus:border-primary" />
+        </div>
+
+        <div class="flex items-center gap-[6px]">
+          <label class="text-[12px] text-muted">إلى التاريخ</label>
+          <input type="date" [(ngModel)]="toDate" (ngModelChange)="onFilterChange()"
+            class="px-3 py-[9px] border border-line rounded-[9px] text-[13px] bg-white outline-none focus:border-primary" />
+        </div>
+
+        <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[9px] flex-1 min-w-[200px] shadow-sm">
+          <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+          <input [(ngModel)]="search" (ngModelChange)="onFilterChange()" placeholder="ابحث عن رقم القيد أو المورد أو الفاتورة..."
+            class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+          <button *ngIf="search" (click)="search=''; onFilterChange()"
+            class="text-[#a3a8b2] hover:text-ink bg-transparent border-0 cursor-pointer text-[13px]">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-[6px]">
+          <app-select
+          [(ngModel)]="sortBy"
+          [options]="sortOptions.map(s => ({value: s.value, label: 'ترتيب: ' + s.label}))"
+          />
+          <button (click)="toggleSortDirection()"
+            [title]="descending ? 'تنازلي' : 'تصاعدي'"
+            class="w-[38px] h-[38px] rounded-[9px] border border-line bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition cursor-pointer">
+            <i class="fa-solid" [ngClass]="descending ? 'fa-arrow-down-wide-short' : 'fa-arrow-up-short-wide'"></i>
+          </button>
+        </div>
+
+        <button (click)="clearFilters()"
+          class="px-3 py-[9px] border border-line rounded-[9px] text-[13px] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition cursor-pointer whitespace-nowrap">
+          <i class="fa-solid fa-filter-circle-xmark text-[12px]"></i> مسح المرشحات
+        </button>
+
+        <button (click)="exportCsv()"
+          class="px-3 py-[9px] border border-[#d7f0e3] bg-[#eaf7f1] text-[#0e9f6e] rounded-[9px] text-[13px] hover:bg-[#d7f0e3] transition cursor-pointer whitespace-nowrap">
+          <i class="fa-solid fa-file-csv text-[12px]"></i> تصدير CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[12.5px] table-fixed min-w-[850px]">
+        <colgroup>
+          <col class="w-[4%]" />
+          <col class="w-[13%]" />
+          <col class="w-[10%]" />
+          <col class="w-[18%]" />
+          <col class="w-[11%]" />
+          <col class="w-[10%]" />
+          <col class="w-[13%]" />
+          <col class="w-[9%]" />
+          <col class="w-[12%]" />
+        </colgroup>
+        <thead>
+          <tr class="bg-primary text-white text-[11.5px]">
+            <th class="px-[8px] py-[11px] text-right font-semibold">#</th>
+            <th class="px-2 py-[11px] text-right font-semibold">رقم القيد</th>
+            <th class="px-2 py-[11px] text-right font-semibold">النوع</th>
+            <th class="px-2 py-[11px] text-right font-semibold">المورد</th>
+            <th class="px-2 py-[11px] text-center font-semibold">المبلغ</th>
+            <th class="px-2 py-[11px] text-right font-semibold">التاريخ</th>
+            <th class="px-2 py-[11px] text-right font-semibold">رقم الفاتورة</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الحالة</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let j of pagedJournals; let i = index"
+            class="border-t border-[#f1f2f4] hover:bg-[#fafbfc] transition odd:bg-[#fcfcfd]">
+            <td class="px-[8px] py-[9px] text-muted text-[11.5px]">{{ (page - 1) * pageSize + i + 1 }}</td>
+            <td class="px-2 py-[9px] font-mono text-[11.5px] font-bold truncate">
+              <button (click)="openDetail(j.id)" [title]="j.entryNumber"
+                class="text-primary-text hover:underline bg-transparent border-0 cursor-pointer p-0 font-mono font-bold truncate block w-full text-right">
+                {{ j.entryNumber }}
+              </button>
+            </td>
+            <td class="px-2 py-[9px] text-center">
+              <span class="px-[6px] py-[2px] rounded-full text-[10.5px] font-semibold whitespace-nowrap" [ngClass]="typeBadgeClass(j.type)">
+                {{ typeLabel(j.type) }}
+              </span>
+            </td>
+            <td class="px-2 py-[9px] font-semibold truncate" [title]="j.supplierName || ''">{{ j.supplierName || '—' }}</td>
+            <td class="px-2 py-[9px] text-center font-semibold truncate">{{ j.amount | number:'1.2-2' }}</td>
+            <td class="px-2 py-[9px] text-[#5b626d] whitespace-nowrap">{{ formatDate(j.entryDate) }}</td>
+            <td class="px-2 py-[9px] text-[#5b626d] truncate">{{ j.invoiceNumber || '—' }}</td>
+            <td class="px-2 py-[9px] text-center">
+              <span class="px-[6px] py-[2px] rounded-full text-[10.5px] font-semibold whitespace-nowrap" [ngClass]="statusBadgeClass(j.status)">
+                {{ statusLabel(j.status) }}
+              </span>
+            </td>
+            <td class="px-[6px] py-[9px]">
+              <div class="flex items-center justify-center">
+                <button (click)="openDetail(j.id)"
+                  class="px-[8px] py-[5px] rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[10.5px] cursor-pointer">
+                  عرض
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div *ngIf="loading" class="p-12 text-center text-muted">
+        <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+        جارٍ تحميل دفاتر المشتريات…
+      </div>
+      <div *ngIf="!loading && loadError" class="p-12 text-center text-danger">
+        <i class="fa-solid fa-triangle-exclamation text-[26px] block mb-3"></i>
+        تعذّر تحميل دفاتر المشتريات.
+        <div class="mt-3">
+          <button (click)="load()" class="text-primary-text text-[13px] font-semibold hover:underline bg-transparent border-0 cursor-pointer">
+            <i class="fa-solid fa-rotate-right text-[11px]"></i> إعادة المحاولة
+          </button>
+        </div>
+      </div>
+      <div *ngIf="!loading && !loadError && pagedJournals.length === 0" class="p-12 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-book text-[30px] block mb-3 opacity-40"></i>
+        لا توجد دفاتر مشتريات
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="!loading && !loadError && pagedJournals.length > 0" class="flex flex-wrap items-center justify-between gap-[10px] px-[16px] py-[12px] border-t border-[#f1f2f4] text-[12.5px] text-muted">
+        <span>صفحة {{ page }} من {{ totalPages }} — {{ total }} قيد</span>
+        <div class="flex gap-[8px]">
+          <button (click)="prevPage()" [disabled]="!hasPreviousPage"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-right"></i>
+          </button>
+          <button (click)="nextPage()" [disabled]="!hasNextPage"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-left"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>
+
+<!-- Detail Modal — non-dismissible on background click, only via the X button -->
+<div *ngIf="selectedJournal || detailLoading"
+  class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 print:static print:bg-white print:p-0 print:block">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[640px] shadow-[0_20px_60px_rgba(0,0,0,.18)] max-h-[92vh] overflow-y-auto print:max-w-none print:max-h-none print:shadow-none print:border-0 print:rounded-none">
+
+    <div *ngIf="detailLoading" class="p-14 text-center text-muted print:hidden">
+      <i class="fa-solid fa-spinner fa-spin text-[28px] block mb-3"></i>
+      جارٍ تحميل تفاصيل الدفتر…
+    </div>
+
+    <ng-container *ngIf="selectedJournal as j">
+      <div class="flex items-center justify-between px-[22px] py-[16px] border-b border-[#f0f1f4]">
+        <div class="flex items-center gap-[12px]">
+          <div class="text-[18px] font-bold">{{ j.entryNumber }}</div>
+          <span class="px-2 py-[3px] rounded-full text-[11px] font-semibold" [ngClass]="typeBadgeClass(j.type)">
+            {{ typeLabel(j.type) }}
+          </span>
+          <span class="px-2 py-[3px] rounded-full text-[11px] font-semibold" [ngClass]="statusBadgeClass(j.status)">
+            {{ statusLabel(j.status) }}
+          </span>
+        </div>
+        <button (click)="closeDetail()"
+          class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px] print:hidden">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-[22px]">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-[14px] mb-[20px]">
+          <div *ngIf="j.supplierName"><span class="text-[12px] text-muted block mb-[2px]">المورد</span><span class="font-semibold">{{ j.supplierName }}</span></div>
+          <div *ngIf="j.invoiceNumber"><span class="text-[12px] text-muted block mb-[2px]">الفاتورة المرتبطة</span><span class="font-semibold">{{ j.invoiceNumber }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">تاريخ القيد</span><span class="font-semibold">{{ formatDate(j.entryDate) }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">المبلغ</span><span class="font-bold text-[16px] text-[#5156be]">{{ j.amount | number:'1.2-2' }}</span></div>
+        </div>
+
+        <div class="bg-[#f6f7f9] rounded-[9px] p-[16px] mb-[20px]">
+          <span class="text-[12px] text-muted block mb-[4px]">البيان</span>
+          <span class="text-[13.5px]">{{ j.description }}</span>
+        </div>
+
+        <!-- Journal entry -->
+        <div *ngIf="j.journalEntryId" class="bg-[#eaf7f1] border border-[#d7f0e3] rounded-[9px] p-[16px] mb-[20px] text-[13px]">
+          <i class="fa-solid fa-book text-[#0e9f6e]"></i>
+          تم إنشاء القيد المحاسبي — معرّف القيد: <span class="font-mono">{{ j.journalEntryId }}</span>
+        </div>
+
+        <!-- Audit trail -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-[10px] text-[12px] text-muted mb-[20px]">
+          <div *ngIf="j.createdBy">أنشئ بواسطة: <span class="font-semibold text-ink">{{ j.createdBy }}</span> — {{ formatDate(j.createdAt) }}</div>
+          <div *ngIf="j.postedBy">رُحّل بواسطة: <span class="font-semibold text-ink">{{ j.postedBy }}</span> — {{ j.postedAt ? formatDate(j.postedAt) : '' }}</div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-wrap gap-[10px] pt-[14px] border-t border-[#f0f1f4] print:hidden">
+          <button (click)="printJournal()"
+            class="px-4 py-[10px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer">
+            <i class="fa-solid fa-print"></i> طباعة
+          </button>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>

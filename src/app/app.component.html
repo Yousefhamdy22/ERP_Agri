@@ -1,0 +1,10 @@
+<ng-container *ngIf="!hideChrome">
+  <app-header></app-header>
+  <app-nav-menu></app-nav-menu>
+</ng-container>
+
+<main [class]="hideChrome ? '' : 'w-full max-w-[1340px] mx-auto px-3 sm:px-6 pb-6 sm:pb-10 min-w-0 overflow-x-hidden'">
+  <router-outlet></router-outlet>
+</main>
+
+<app-toast></app-toast>

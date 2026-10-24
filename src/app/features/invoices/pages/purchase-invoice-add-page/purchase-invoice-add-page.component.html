@@ -1,0 +1,403 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="اضافة فاتورة توريد"
+      icon="fa-solid fa-file-invoice"
+      [subtitle]="draftInvoiceId ? ('رقم المسودة: ' + draftInvoiceId) : 'لم يتم حفظ مسودة بعد'">
+    </app-page-header>
+
+    <!-- ── البيانات الاساسية للفاتورة ── -->
+    <div class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm mb-[16px]">
+      <div class="text-[14px] font-bold mb-[18px] pb-[13px] border-b border-[#f0f1f4] flex items-center gap-[8px]">
+        <i class="fa-solid fa-file-lines text-primary"></i> البيانات الاساسية للفاتورة
+      </div>
+
+      <form [formGroup]="headerForm">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              المورد <span class="text-danger">*</span>
+            </label>
+            <app-searchable-combo-box storageKey="suppliers"
+              formControlName="supplierId"
+              [items]="supplierComboItems"
+              [invalid]="invalidH('supplierId')"
+              placeholder="ابحث بالاسم أو الهاتف أو الكود…"
+              emptyMessage="لا توجد موردين">
+            </app-searchable-combo-box>
+            <div *ngIf="invalidH('supplierId')" class="text-[11px] text-danger mt-[4px]">المورد مطلوب</div>
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              الفرع <span class="text-danger">*</span>
+            </label>
+            <app-select
+          formControlName="branchId"
+          [options]="[{value: '', label: '— اختر الفرع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="— اختر الفرع —"
+          (changed)="onBranchChange()"
+          [searchable]="true"
+          />
+            <div *ngIf="invalidH('branchId')" class="text-[11px] text-danger mt-[4px]">الفرع مطلوب</div>
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              المخزن <span class="text-danger">*</span>
+            </label>
+            <app-select
+          formControlName="warehouseId"
+          [options]="[{value: '', label: '— اختر المخزن —'}].concat(warehouses.map(w => ({value: w.warehouseId, label: w.nameAr || w.name || ''})))"
+          placeholder="— اختر المخزن —"
+          [disabled]="!headerForm.value.branchId"
+          [searchable]="true"
+          />
+            <div *ngIf="invalidH('warehouseId')" class="text-[11px] text-danger mt-[4px]">المخزن مطلوب</div>
+            <div *ngIf="headerForm.value.branchId && !warehouses.length" class="text-[11px] text-muted mt-[4px]">
+              لا توجد مخازن مسجلة لهذا الفرع
+            </div>
+            <div *ngIf="!headerForm.value.branchId" class="text-[11px] text-muted mt-[4px]">
+              اختر الفرع أولاً لعرض مخازنه
+            </div>
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              تاريخ الفاتورة <span class="text-danger">*</span>
+            </label>
+            <input type="date" formControlName="invoiceDate"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalidH('invoiceDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            <div *ngIf="invalidH('invoiceDate')" class="text-[11px] text-danger mt-[4px]">تاريخ الفاتورة مطلوب</div>
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              تاريخ الاستحقاق <span class="text-danger">*</span>
+            </label>
+            <input type="date" formControlName="dueDate"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalidH('dueDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            <div *ngIf="invalidH('dueDate')" class="text-[11px] text-danger mt-[4px]">تاريخ الاستحقاق مطلوب</div>
+            <div class="text-[11px] text-muted mt-[4px]">يُساوي تاريخ الفاتورة تلقائياً ما لم تُعدِّله</div>
+          </div>
+
+          <!-- تفاصيل إضافية: العملة/سعر الصرف/المرجع الورقي/الخصم/الملاحظات -->
+          <div class="col-span-1 md:col-span-2">
+            <div (click)="toggleDetails()"
+              class="flex items-center justify-between py-[10px] cursor-pointer select-none border-t border-[#f0f1f4]">
+              <div class="text-[13px] font-semibold text-[#374151] flex items-center gap-[8px]">
+                <i class="fa-solid fa-sliders text-primary"></i> تفاصيل إضافية
+              </div>
+              <i class="fa-solid text-[#b3b9c2] text-[12px]" [ngClass]="detailsOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+            </div>
+          </div>
+
+          <ng-container *ngIf="detailsOpen">
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">العملة</label>
+              <app-select formControlName="currency" [options]="currencies.map(c => ({value: c, label: c}))" />
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">سعر الصرف</label>
+              <input type="number" step="0.0001" min="0.0001" formControlName="exchangeRate"
+                class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+                [ngClass]="invalidH('exchangeRate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+              <div *ngIf="invalidH('exchangeRate')" class="text-[11px] text-danger mt-[4px]">سعر الصرف مطلوب ويجب أن يكون أكبر من صفر</div>
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+                الرقم المرجعي للفاتورة الورقية <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+              </label>
+              <input formControlName="paperReference" placeholder="PUR-2026-0001"
+                class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">خصم الفاتورة</label>
+              <div class="flex gap-[8px]">
+                <input type="number" step="0.01" min="0" formControlName="invoiceDiscountValue"
+                  class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+                <app-select
+          formControlName="invoiceDiscountIsPercent"
+          [options]="discountTypes.map(d => ({value: d.value, label: d.label}))"
+          />
+              </div>
+            </div>
+
+            <div class="col-span-1 md:col-span-2 group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+                ملاحظات <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+              </label>
+              <textarea formControlName="notes" rows="2" placeholder="ملاحظات على الفاتورة…"
+                class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary resize-none transition"></textarea>
+            </div>
+
+            <!-- بيانات التأكيد (مطلوبة عند الضغط على "تأكيد الفاتورة" فقط، وليس عند حفظ المسودة) -->
+            <div class="col-span-1 md:col-span-2 pt-[8px] mt-[4px] border-t border-[#f0f1f4] text-[12px] font-semibold text-[#374151] flex items-center gap-[7px]">
+              <i class="fa-solid fa-circle-check text-primary"></i> بيانات التأكيد
+            </div>
+
+            <div class="contents" [formGroup]="confirmForm">
+              <div class="group">
+                <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+                  الفترة المالية <span class="text-danger">*</span>
+                </label>
+                <app-select
+          formControlName="fiscalPeriodId"
+          [options]="[{value: '', label: '— اختر الفترة المالية —'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode})))"
+          placeholder="— اختر الفترة المالية —"
+          />
+                <div *ngIf="invalidC('fiscalPeriodId')" class="text-[11px] text-danger mt-[4px]">اختر الفترة المالية قبل تأكيد الفاتورة</div>
+              </div>
+
+              <div class="group">
+                <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+                  نوع السداد <span class="text-danger">*</span>
+                </label>
+                <app-select
+          formControlName="paymentType"
+          [options]="paymentTypes.map(t => ({value: t.value, label: t.label}))"
+          />
+              </div>
+
+              <div class="group">
+                <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+                  حساب الدفع <span class="text-danger">*</span>
+                </label>
+                <app-select
+          formControlName="paymentAccountCode"
+          [options]="paymentAccounts.map(a => ({value: a.code, label: a.label}))"
+          [searchable]="true"
+          />
+              </div>
+            </div>
+          </ng-container>
+
+        </div>
+      </form>
+    </div>
+
+    <!-- ── اضافة صنف للفاتورة ── -->
+    <!-- overflow-hidden أُزيل عمداً — كان يقصّ قائمة نتائج app-product-search-select
+         (المُوضَعة absolute) كلما امتدت خارج حدود هذه البطاقة، فتبدو مختفية خلف القسم التالي. -->
+    <div class="bg-white border border-line rounded-[13px] shadow-sm mb-[16px]">
+      <div (click)="toggleLines()"
+        class="flex items-center justify-between px-[18px] py-[14px] cursor-pointer select-none"
+        [ngClass]="linesOpen ? 'border-b border-[#f0f1f4]' : ''">
+        <div class="text-[14px] font-bold flex items-center gap-[9px]">
+          <i class="fa-solid fa-boxes-stacked text-primary"></i>
+          اضافة صنف للفاتورة
+          <span *ngIf="lines.length > 0" class="text-[11px] font-bold bg-primary text-white px-[8px] py-[1px] rounded-full">
+            {{ lines.length }}
+          </span>
+        </div>
+        <div class="flex items-center gap-[10px]">
+          <button (click)="showImportItemsModal = true; $event.stopPropagation()"
+            class="flex items-center gap-[6px] px-[10px] py-[6px] rounded-[8px] border border-[#e3e6ea] bg-white text-[#4b5563] text-[11.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer">
+            <i class="fa-solid fa-file-excel text-[#0e9f6e]"></i> استيراد من إكسيل
+          </button>
+          <i class="text-[#b3b9c2] text-[13px]" [ngClass]="linesOpen ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"></i>
+        </div>
+      </div>
+
+      <div *ngIf="linesOpen" class="p-[18px]">
+
+        <!-- pending lines table -->
+        <div *ngIf="lines.length > 0" class="mb-[14px] rounded-[9px] overflow-hidden border border-[#e3e6ea]">
+          <div class="overflow-x-auto">
+          <table class="w-full text-[13px] min-w-[720px]">
+            <thead>
+              <tr class="bg-[#fafbfc] text-[11.5px] text-muted border-b border-[#e3e6ea]">
+                <th class="px-[12px] py-[7px] text-right font-semibold">الصنف</th>
+                <th class="px-[12px] py-[7px] text-center font-semibold">الكمية</th>
+                <th class="px-[12px] py-[7px] text-center font-semibold">سعر الوحدة</th>
+                <th class="px-[12px] py-[7px] text-center font-semibold">خصم %</th>
+                <th class="px-[12px] py-[7px] text-center font-semibold">ضريبة %</th>
+                <th class="px-[12px] py-[7px] text-center font-semibold">الإجمالي</th>
+                <th class="px-[12px] py-[7px]"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let l of paginatedLines; let i = index" class="border-t border-[#f0f1f4] hover:bg-[#fafbfc]">
+                <td class="px-[12px] py-[8px] font-semibold">{{ getProductLabel(l.productId) }}</td>
+                <td class="px-[8px] py-[6px] text-center">
+                  <input type="number" step="1" min="0.0001" [(ngModel)]="l.quantity" [name]="'qty_' + getRealLineIndex(l)"
+                    class="w-[75px] px-[6px] py-[4px] border border-[#e3e6ea] rounded-[6px] text-center text-[13px] font-semibold outline-none focus:border-primary transition" />
+                </td>
+                <td class="px-[8px] py-[6px] text-center">
+                  <input type="number" step="0.01" min="0" [(ngModel)]="l.unitPrice" [name]="'price_' + getRealLineIndex(l)"
+                    class="w-[90px] px-[6px] py-[4px] border border-[#e3e6ea] rounded-[6px] text-center text-[13px] font-mono outline-none focus:border-primary transition" />
+                </td>
+                <td class="px-[8px] py-[6px] text-center">
+                  <input type="number" step="0.1" min="0" max="100" [(ngModel)]="l.discountPct" [name]="'disc_' + getRealLineIndex(l)"
+                    class="w-[60px] px-[6px] py-[4px] border border-[#e3e6ea] rounded-[6px] text-center text-[13px] outline-none focus:border-primary transition" />
+                </td>
+                <td class="px-[8px] py-[6px] text-center">
+                  <input type="number" step="0.1" min="0" max="100" [(ngModel)]="l.taxPct" [name]="'tax_' + getRealLineIndex(l)"
+                    class="w-[60px] px-[6px] py-[4px] border border-[#e3e6ea] rounded-[6px] text-center text-[13px] outline-none focus:border-primary transition" />
+                </td>
+                <td class="px-[12px] py-[8px] text-center font-bold text-primary-text">{{ lineTotal(l) | number:'1.2-2' }}</td>
+                <td class="px-[12px] py-[8px] text-center">
+                  <button (click)="removeLine(getRealLineIndex(l))" title="حذف الصنف من الفاتورة"
+                    class="w-7 h-7 rounded-full text-[12px] text-danger hover:bg-[#fdeaea] cursor-pointer border-0 bg-transparent transition inline-flex items-center justify-center">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="border-t border-[#e3e6ea] bg-[#fafbfc]">
+                <td colspan="5" class="px-[12px] py-[8px] text-left font-semibold">إجمالي الأصناف (تقديري)</td>
+                <td class="px-[12px] py-[8px] text-center font-bold text-primary-text">{{ linesTotal | number:'1.2-2' }}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+          </div>
+
+          <!-- Pagination bar for purchase lines table -->
+          <div *ngIf="lines.length > 5" class="flex flex-wrap items-center justify-between gap-[10px] px-[16px] py-[10px] bg-[#fafbfc] border-t border-[#e3e6ea] text-[12.5px] text-[#4b5563]">
+            <div class="flex items-center gap-[8px]">
+              <span>عرض</span>
+              <app-select
+          [options]="[{value: '0', label: 'الكل (' + lines.length + ')'}].concat(linesPageSizeOptions.map(sz => ({value: '' + sz, label: sz + ' أصناف'})))"
+          placeholder="الكل ({{ lines.length }})"
+          (changed)="onLinesPageSizeChange($event)"
+          />
+              <span>أصناف | الأسطر من <strong>{{ linesStartItemIndex }}</strong> إلى <strong>{{ linesEndItemIndex }}</strong> من أصل <strong>{{ lines.length }}</strong> صنف</span>
+            </div>
+
+            <div *ngIf="linesPageSize > 0 && totalLinesPages > 1" class="flex items-center gap-[5px]">
+              <button (click)="setLinesPage(1)" [disabled]="linesPage === 1"
+                class="px-[8px] py-[4px] border border-[#e3e6ea] rounded-[6px] bg-white hover:bg-[#f3f4f7] disabled:opacity-40 disabled:cursor-not-allowed transition text-[11px] font-semibold">
+                <i class="fa-solid fa-angles-right"></i> الأولى
+              </button>
+              <button (click)="setLinesPage(linesPage - 1)" [disabled]="linesPage === 1"
+                class="px-[8px] py-[4px] border border-[#e3e6ea] rounded-[6px] bg-white hover:bg-[#f3f4f7] disabled:opacity-40 disabled:cursor-not-allowed transition text-[11px] font-semibold">
+                <i class="fa-solid fa-angle-right"></i> السابقة
+              </button>
+              <span class="px-[10px] font-semibold text-[12px]">صفحة {{ linesPage }} من {{ totalLinesPages }}</span>
+              <button (click)="setLinesPage(linesPage + 1)" [disabled]="linesPage === totalLinesPages"
+                class="px-[8px] py-[4px] border border-[#e3e6ea] rounded-[6px] bg-white hover:bg-[#f3f4f7] disabled:opacity-40 disabled:cursor-not-allowed transition text-[11px] font-semibold">
+                التالية <i class="fa-solid fa-angle-left"></i>
+              </button>
+              <button (click)="setLinesPage(totalLinesPages)" [disabled]="linesPage === totalLinesPages"
+                class="px-[8px] py-[4px] border border-[#e3e6ea] rounded-[6px] bg-white hover:bg-[#f3f4f7] disabled:opacity-40 disabled:cursor-not-allowed transition text-[11px] font-semibold">
+                الأخيرة <i class="fa-solid fa-angles-left"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- inline line-add row -->
+        <form [formGroup]="lineForm" (ngSubmit)="addLine()">
+          <div class="flex gap-[10px] items-end flex-wrap">
+
+            <div class="w-full sm:flex-1 sm:min-w-[200px] group">
+              <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+                الصنف <span class="text-danger">*</span>
+              </label>
+              <app-product-search-select formControlName="productId"
+                [invalid]="invalidL('productId')"
+                [warehouseId]="headerForm.value.warehouseId || null"
+                priceField="cost"
+                (productPicked)="onProductPicked($event)">
+              </app-product-search-select>
+            </div>
+
+            <div class="w-[calc(50%-5px)] sm:w-[100px] shrink-0 group">
+              <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">الكمية <span class="text-danger">*</span></label>
+              <input type="number" step="0.01" min="0.0001" formControlName="quantity"
+                class="w-full px-[10px] py-[8px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+                [ngClass]="invalidL('quantity') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            </div>
+
+            <div class="w-[calc(50%-5px)] sm:w-[120px] shrink-0 group">
+              <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">سعر الوحدة <span class="text-danger">*</span></label>
+              <input type="number" step="0.01" min="0" formControlName="unitPrice"
+                class="w-full px-[10px] py-[8px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+                [ngClass]="invalidL('unitPrice') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            </div>
+
+            <div class="w-[calc(50%-5px)] sm:w-[90px] shrink-0 group">
+              <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">خصم %</label>
+              <input type="number" step="0.01" min="0" max="100" formControlName="discountPct"
+                class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+            </div>
+
+            <div class="w-[calc(50%-5px)] sm:w-[90px] shrink-0 group">
+              <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">ضريبة %</label>
+              <input type="number" step="0.01" min="0" max="100" formControlName="taxPct"
+                class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+            </div>
+
+            <div class="w-full sm:flex-1 sm:min-w-[160px] group">
+              <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+                وصف <span class="text-[#b3b9c2] font-normal">(اختياري)</span>
+              </label>
+              <input formControlName="description" placeholder="وصف الصنف في الفاتورة"
+                class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] outline-none focus:border-primary transition" />
+            </div>
+
+            <div class="w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+              <label class="hidden sm:block text-[12px] mb-[5px] opacity-0 select-none">x</label>
+              <app-button variant="primary" type="submit" icon="fa-solid fa-plus" [customClass]="'w-full sm:w-auto justify-center'">إضافة صنف</app-button>
+            </div>
+
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── تسجيل الضرائب (ان وجدت) ── -->
+    <div class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm mb-[16px]">
+      <div class="text-[14px] font-bold mb-[18px] pb-[13px] border-b border-[#f0f1f4] flex items-center gap-[8px]">
+        <i class="fa-solid fa-percent text-primary"></i> تسجيل الضرائب (ان وجدت)
+      </div>
+
+      <form [formGroup]="taxForm">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">ضريبة القيمة المضافة % (VAT)</label>
+            <input type="number" step="0.01" min="0" max="100" formControlName="vatRatePct"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الضريبة التجارية %</label>
+            <input type="number" step="0.01" min="0" max="100" formControlName="commercialTaxRatePct"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── Actions ── -->
+    <div class="flex flex-wrap gap-[10px] mb-6">
+      <app-button variant="primary" icon="fa-solid fa-floppy-disk" (click)="saveDraft()" [disabled]="saving">
+        {{ saving ? 'جارٍ الحفظ…' : (draftInvoiceId ? 'حفظ التعديلات على المسودة' : 'حفظ كمسودة') }}
+      </app-button>
+      <app-button variant="primary" icon="fa-solid fa-circle-check" (click)="confirmInvoice()" [disabled]="!draftInvoiceId || confirming">
+        {{ confirming ? 'جارٍ التأكيد…' : 'تأكيد الفاتورة' }}
+      </app-button>
+      <app-button variant="ghost" routerLink="/sales?module=purchases&tab=main">إلغاء</app-button>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>
+
+<app-import-invoice-items-modal *ngIf="showImportItemsModal" [products]="products" [existingProductIds]="existingProductIds"
+  (closed)="showImportItemsModal = false" (itemsImported)="onItemsImported($event)"></app-import-invoice-items-modal>

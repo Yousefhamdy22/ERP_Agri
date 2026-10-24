@@ -1,0 +1,111 @@
+<div class="pdf-modal-backdrop" *ngIf="isOpen" (click)="onClose()">
+  <div
+    class="pdf-modal-container"
+    [class.pdf-modal-container--fullscreen]="isFullscreen"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Modal Header -->
+    <div class="pdf-modal-header">
+      <div class="pdf-modal-title">
+        <div class="pdf-icon">
+          <i class="fa-solid fa-file-pdf"></i>
+        </div>
+        <div>
+          <h3>{{ title }}</h3>
+          <p *ngIf="subtitle">{{ subtitle }}</p>
+        </div>
+      </div>
+
+      <div class="pdf-modal-actions">
+        <!-- Print -->
+        <button
+          type="button"
+          class="btn-action btn-print"
+          (click)="onPrint()"
+          [disabled]="loading || !safeUrl"
+          title="طباعة التقرير"
+        >
+          <i class="fa-solid fa-print"></i>
+          <span>طباعة</span>
+        </button>
+
+        <!-- Download -->
+        <button
+          type="button"
+          class="btn-action btn-download"
+          (click)="onDownload()"
+          [disabled]="loading || !pdfUrl"
+          title="تحميل ملف PDF"
+        >
+          <i class="fa-solid fa-download"></i>
+          <span>تحميل PDF</span>
+        </button>
+
+        <!-- Open in new tab -->
+        <button
+          type="button"
+          class="btn-icon"
+          (click)="openInNewTab()"
+          [disabled]="loading || !pdfUrl"
+          title="فتح في تبويب جديد"
+        >
+          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        </button>
+
+        <!-- Fullscreen toggle -->
+        <button
+          type="button"
+          class="btn-icon"
+          (click)="toggleFullscreen()"
+          [title]="isFullscreen ? 'تصغير' : 'ملء الشاشة'"
+        >
+          <i
+            class="fa-solid"
+            [ngClass]="isFullscreen ? 'fa-compress' : 'fa-expand'"
+          ></i>
+        </button>
+
+        <!-- Close -->
+        <button
+          type="button"
+          class="btn-icon btn-close"
+          (click)="onClose()"
+          title="إغلاق المعاينة"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="pdf-modal-body">
+      <!-- Loading State -->
+      <div class="pdf-loading" *ngIf="loading">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <h4>جاري إنشاء وتجهيز ملف الـ PDF...</h4>
+        <p>قد يستغرق ذلك بضع ثوانٍ لتجهيز الجداول والبيانات المالية</p>
+      </div>
+
+      <!-- Error State -->
+      <div class="pdf-error" *ngIf="!loading && error">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <h4>تعذّر تجهيز معاينة ملف الـ PDF</h4>
+        <p>{{ error }}</p>
+        <button type="button" class="btn-retry" (click)="onRetry()">
+          <i class="fa-solid fa-rotate-right"></i>
+          إعادة المحاولة
+        </button>
+      </div>
+
+      <!-- PDF Viewer Frame -->
+      <div class="pdf-frame-wrapper" *ngIf="!loading && !error && safeUrl">
+        <iframe
+          id="pdf-preview-iframe"
+          [src]="safeUrl"
+          class="pdf-iframe"
+          title="PDF Preview"
+        ></iframe>
+      </div>
+    </div>
+  </div>
+</div>

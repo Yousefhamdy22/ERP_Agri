@@ -1,0 +1,67 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      [title]="isEdit ? 'تعديل عميل' : 'اضافة عميل'"
+      icon="fa-solid fa-user-tag">
+    </app-page-header>
+
+    <div *ngIf="loading" class="p-14 text-center text-muted">
+      <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+      جارٍ تحميل بيانات العميل…
+    </div>
+
+    <form *ngIf="!loading" [formGroup]="form" (ngSubmit)="submit()" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الاسم بالعربية <span class="text-danger">*</span>
+          </label>
+          <input formControlName="nameAr" autofocus placeholder="مثال: أحمد محمد"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('nameAr') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('nameAr')" class="text-[11px] text-danger mt-[4px]">الاسم بالعربية مطلوب</div>
+        </div>
+
+
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الهاتف <span class="text-danger" *ngIf="!isEdit">*</span>
+          </label>
+          <input formControlName="phone" placeholder="01xxxxxxxxx"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+            [ngClass]="invalid('phone') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('phone')" class="text-[11px] text-danger mt-[4px]">الهاتف مطلوب</div>
+        </div>
+
+        <div class="group" *ngIf="!isEdit">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الحد الائتماني <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <input type="number" formControlName="creditLimit" placeholder="0" min="0"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+        </div>
+
+      </div>
+
+      <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+        <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">
+          {{ saving ? 'جارٍ الحفظ…' : (isEdit ? 'حفظ التعديلات' : 'حفظ العميل') }}
+        </app-button>
+        <app-button variant="ghost" routerLink="/parties/customers/manage">إلغاء</app-button>
+      </div>
+    </form>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

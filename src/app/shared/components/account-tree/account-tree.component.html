@@ -1,0 +1,96 @@
+<div class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm">
+
+  <div *ngFor="let row of rows; let last = last"
+    class="group flex items-center gap-[10px] px-[16px] py-[11px] hover:bg-[#f8fafd]"
+    [class.border-b]="!last" [class.border-[#f0f1f4]]="!last"
+    [class.opacity-50]="!row.account.isActive">
+
+    <!-- indentation spacer -->
+    <div [style.width.px]="indent(row.level)" class="shrink-0"></div>
+
+    <!-- expand / leaf indicator -->
+    <button *ngIf="row.hasChildren" (click)="toggle(row.account.id)"
+      class="w-6 h-6 flex items-center justify-center text-[#a3a8b2] hover:text-primary cursor-pointer bg-transparent border-0 shrink-0">
+      <i class="text-[11px]" [class]="isCollapsed(row.account.id) ? 'fa-solid fa-angle-left' : 'fa-solid fa-angle-down'"></i>
+    </button>
+    <div *ngIf="!row.hasChildren" class="w-6 flex items-center justify-center shrink-0">
+      <span class="w-[6px] h-[6px] rounded-full bg-[#d0d4dc]"></span>
+    </div>
+
+    <!-- icon -->
+    <i class="text-[15px] shrink-0"
+      [class]="row.hasChildren ? 'fa-solid fa-folder text-[#e0a818]' : 'fa-regular fa-folder text-[#c0a050]'"></i>
+
+    <!-- code + names -->
+    <div class="flex-1 min-w-0 flex items-center gap-[8px]">
+      <span class="font-mono text-[12px] text-muted shrink-0">{{ row.account.accountCode }}</span>
+      <span class="text-[13.5px] font-semibold truncate">{{ row.account.nameAr }}</span>
+      <span *ngIf="row.account.name" class="text-[12px] text-muted truncate hidden sm:inline">{{ row.account.name }}</span>
+    </div>
+
+    <!-- badges -->
+    <span class="text-[10px] bg-[#eef0fb] text-[#5156be] px-[7px] py-[1.5px] rounded-full font-semibold shrink-0 whitespace-nowrap hidden md:inline">
+      {{ typeLabel(row.account.type) }}
+    </span>
+    <span class="text-[10px] px-[7px] py-[1.5px] rounded-full font-semibold shrink-0 whitespace-nowrap hidden sm:inline"
+      [ngClass]="row.account.normalBalance === 'Debit' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'">
+      {{ balanceLabel(row.account.normalBalance) }}
+    </span>
+    <span *ngIf="row.account.isSystem" class="text-[10px] bg-gray-200 text-gray-700 px-[7px] py-[1.5px] rounded-full font-semibold shrink-0 whitespace-nowrap">
+      <i class="fa-solid fa-lock text-[8px]"></i> نظام
+    </span>
+    <span *ngIf="!row.account.isActive" class="text-[10px] bg-[#fdeaea] text-danger px-[7px] py-[1.5px] rounded-full font-semibold shrink-0 whitespace-nowrap">
+      غير نشط
+    </span>
+
+    <!-- children badge -->
+    <span *ngIf="row.hasChildren"
+      class="text-[10.5px] bg-[#f3f4f7] text-[#5b626d] px-[7px] py-[1.5px] rounded-full font-bold shrink-0">
+      {{ row.account.children.length }} فرعي
+    </span>
+
+    <!-- Rollup Balance Display -->
+    <div class="text-left shrink-0 min-w-[110px] px-2">
+      <div class="text-[12.5px] font-mono font-bold"
+        [ngClass]="(row.account.netBalance || 0) < 0 ? 'text-danger' : (row.account.netBalance || 0) > 0 ? 'text-primary' : 'text-muted'">
+        {{ (row.account.netBalance || 0) | number:'1.2-2' }}
+      </div>
+      <div class="text-[9.5px] text-muted flex items-center justify-end gap-1 font-mono">
+        <span>م: {{ (row.account.debitBalance || 0) | number:'1.0-0' }}</span>
+        <span>|</span>
+        <span>د: {{ (row.account.creditBalance || 0) | number:'1.0-0' }}</span>
+      </div>
+    </div>
+
+    <!-- hover actions -->
+    <div class="hidden group-hover:flex items-center gap-[4px] shrink-0">
+      <button (click)="viewLedger.emit(row.account)" title="عرض كشف الحساب والقيود"
+        class="w-7 h-7 rounded-[7px] border border-[#d2e3fc] bg-white text-[#1967d2] hover:bg-[#e8f0fe] cursor-pointer flex items-center justify-center">
+        <i class="fa-solid fa-file-invoice-dollar text-[11px]"></i>
+      </button>
+      <button (click)="addChild.emit(row.account)" title="إضافة حساب فرعي"
+        class="w-7 h-7 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border cursor-pointer flex items-center justify-center">
+        <i class="fa-solid fa-plus text-[11px]"></i>
+      </button>
+      <button *ngIf="!row.account.isSystem" (click)="moveAccount.emit(row.account)" title="نقل الحساب"
+        class="w-7 h-7 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center">
+        <i class="fa-solid fa-arrows-up-down-left-right text-[11px]"></i>
+      </button>
+      <button (click)="toggleActive.emit(row.account)" [title]="row.account.isActive ? 'تعطيل الحساب' : 'تفعيل الحساب'"
+        class="w-7 h-7 rounded-[7px] border border-[#e3e6ea] bg-white hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center"
+        [ngClass]="row.account.isActive ? 'text-[#d4830a]' : 'text-[#0e9f6e]'">
+        <i class="fa-solid text-[11px]" [ngClass]="row.account.isActive ? 'fa-ban' : 'fa-circle-check'"></i>
+      </button>
+      <button *ngIf="!row.account.isSystem && row.account.isLeaf" (click)="deleteAccount.emit(row.account)" title="حذف الحساب"
+        class="w-7 h-7 rounded-[7px] border border-[#f3d4d4] bg-white text-danger hover:bg-[#fdeaea] cursor-pointer flex items-center justify-center">
+        <i class="fa-solid fa-trash text-[11px]"></i>
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="rows.length === 0"
+    class="p-12 text-center text-[#b3b9c2]">
+    <i class="fa-solid fa-sitemap text-[30px] block mb-3 opacity-40"></i>
+    لا توجد حسابات مسجلة بعد
+  </div>
+</div>

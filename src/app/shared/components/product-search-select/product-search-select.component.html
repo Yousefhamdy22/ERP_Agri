@@ -1,0 +1,64 @@
+<div class="relative">
+
+  <!-- Closed: looks like a normal select showing the chosen product -->
+  <div *ngIf="!open" (click)="toggle()"
+    class="w-full flex items-center justify-between px-[11px] py-[9px] border rounded-[9px] text-[13.5px] bg-white cursor-pointer text-right transition-colors duration-150"
+    [ngClass]="invalid ? 'border-danger' : 'border-[#e3e6ea]'">
+    <span class="truncate" [ngClass]="selectedLabel ? 'text-[#1e2330]' : 'text-[#b3b9c2]'">
+      {{ selectedLabel || placeholder }}
+    </span>
+    <div class="flex items-center gap-[8px] shrink-0 ms-2">
+      <button *ngIf="selectedLabel" type="button" (click)="clear($event)"
+        class="text-[#b3b9c2] hover:text-danger bg-transparent border-0 cursor-pointer p-0 leading-none">
+        <i class="fa-solid fa-xmark text-[12px]"></i>
+      </button>
+      <i class="fa-solid fa-magnifying-glass text-[12px] text-[#b3b9c2]"></i>
+    </div>
+  </div>
+
+  <!-- Open: a real search input replaces the trigger — relative+z-index so the fixed
+       backdrop below (which stacks above plain static elements regardless of DOM order)
+       never intercepts clicks/typing meant for this input. -->
+  <input *ngIf="open" [ngModel]="query" (ngModelChange)="onQueryChange($event)" [ngModelOptions]="{standalone:true}"
+    placeholder="اكتب اسم الصنف أو الكود…" autofocus
+    class="relative z-[58] w-full px-[11px] py-[9px] border border-primary rounded-[9px] text-[13.5px] outline-none" />
+
+  <!-- Backdrop: closes panel on outside click -->
+  <div *ngIf="open" class="fixed inset-0 z-[55]" (click)="close()"></div>
+
+  <!-- Results panel -->
+  <div *ngIf="open"
+    class="absolute top-[calc(100%+4px)] right-0 left-0 z-[60] bg-white border border-[#e3e6ea] rounded-[11px] shadow-[0_10px_32px_rgba(0,0,0,.13)] max-h-[320px] overflow-y-auto">
+
+    <div *ngIf="loading" class="p-[16px] text-center text-muted text-[12.5px]">
+      <i class="fa-solid fa-spinner fa-spin"></i> جارٍ التحميل…
+    </div>
+
+    <div *ngIf="!loading && query.trim() && !results.length" class="p-[16px] text-center text-[#b3b9c2] text-[12.5px]">
+      لا توجد نتائج لـ "{{ query }}"
+    </div>
+
+    <div *ngIf="!loading && !query.trim() && !results.length" class="p-[16px] text-center text-[#b3b9c2] text-[12px]">
+      <i class="fa-solid fa-box-open text-[16px] block mb-2 opacity-40"></i>
+      لا توجد أصناف
+    </div>
+
+    <div *ngFor="let item of results" (click)="select(item)"
+      class="flex items-center gap-[10px] px-[13px] py-[10px] cursor-pointer hover:bg-[#f5f6fa] border-b border-[#f4f5f7] last:border-b-0 transition-colors duration-100">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-[8px]">
+          <span class="font-mono text-[11px] text-[#8a909c] shrink-0">{{ item.sku }}</span>
+          <span class="text-[13px] font-semibold truncate">{{ item.name }}</span>
+        </div>
+        <div class="text-[11px] text-muted mt-[2px] flex items-center gap-[8px]">
+          <span>{{ item.categoryName }}</span>
+          <span>· المتاح: {{ item.availableQuantity | number:'1.0-2' }}</span>
+        </div>
+      </div>
+      <div *ngIf="displayPrice(item) != null" class="text-[13px] font-mono font-bold text-primary-text shrink-0">
+        {{ displayPrice(item) | number:'1.2-2' }}
+      </div>
+    </div>
+
+  </div>
+</div>

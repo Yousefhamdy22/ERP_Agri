@@ -1,0 +1,120 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="اضافة فرع"
+      icon="fa-solid fa-code-branch">
+    </app-page-header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            الاسم <span class="text-danger">*</span>
+          </label>
+          <input formControlName="name" autofocus placeholder="e.g. Maadi Branch"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('name') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('name')" class="text-[11px] text-danger mt-[4px]">الاسم مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            كود الفرع <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <input formControlName="code" placeholder="مثال: BR-001"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            نوع الفرع <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <app-select
+          formControlName="branchType"
+          [options]="branchTypes.map(t => ({value: t.value, label: t.label}))"
+          />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            المدينة <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <input formControlName="city" placeholder="مثال: القاهرة"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            العملة <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <app-select
+          formControlName="currency"
+          [options]="currencies.map(c => ({value: c.value, label: c.label}))"
+          />
+        </div>
+
+        <div class="col-span-1 md:col-span-2 group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            العنوان <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <input formControlName="address" placeholder="العنوان التفصيلي للفرع"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            الهاتف <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <input formControlName="phone" placeholder="01xxxxxxxxx"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            البريد الإلكتروني <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <input formControlName="email" placeholder="branch@example.com"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('email') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('email')" class="text-[11px] text-danger mt-[4px]">بريد إلكتروني غير صالح</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+            اسم المدير <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <input formControlName="managerName" placeholder="مثال: أحمد محمد"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+        </div>
+
+        <div class="flex items-center gap-[8px] pt-[22px]">
+          <input type="checkbox" formControlName="isHeadquarters" id="isHeadquarters"
+            class="w-[16px] h-[16px] accent-primary cursor-pointer" />
+          <label for="isHeadquarters" class="text-[13px] font-semibold text-[#374151] cursor-pointer select-none">
+            هذا الفرع هو المركز الرئيسي
+          </label>
+        </div>
+
+      </div>
+
+      <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+        <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">
+          {{ saving ? 'جارٍ الحفظ…' : 'حفظ الفرع' }}
+        </app-button>
+        <app-button variant="ghost" routerLink="/inventory/branches/manage">إلغاء</app-button>
+      </div>
+    </form>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

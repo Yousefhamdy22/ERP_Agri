@@ -1,0 +1,36 @@
+<div class="w-full lg:w-[260px] lg:shrink-0 flex flex-col gap-[16px]">
+
+  <a *ngIf="topButton" [routerLink]="routePath(topButton.route)" [queryParams]="routeQueryParams(topButton.route)"
+    class="flex items-center justify-center gap-[8px] bg-primary text-white rounded-[10px] py-[13px] text-[14px] font-semibold hover:bg-primary-dark transition shadow-sm cursor-pointer">
+    <i class="{{ topButton.icon }} text-[13px]"></i>
+    {{ topButton.label }}
+  </a>
+
+  <div class="bg-white border border-line rounded-[13px] p-[16px]" *ngIf="actions.length">
+    <div class="flex items-center gap-[8px] text-[13px] font-bold text-[#374151] mb-[12px]">
+      <i class="fa-solid fa-paperclip text-[12px] text-muted"></i>
+      أهم العمليات
+    </div>
+    <div class="flex flex-col gap-[9px]">
+      <a *ngFor="let a of actions" [routerLink]="a.route ? routePath(a.route) : null" [queryParams]="a.route ? routeQueryParams(a.route) : null" (click)="run(a)"
+        class="flex items-center justify-between gap-[8px] border border-[#e3e6ea] rounded-[9px] px-[12px] py-[10px] text-[12.5px] text-[#4b5563] bg-white hover:bg-primary-soft hover:text-primary hover:border-primary-border transition cursor-pointer">
+        <span>{{ a.label }}</span>
+        <i class="{{ a.icon || 'fa-solid fa-link' }} text-[11px] text-[#a3a8b2]"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white border border-line rounded-[13px] p-[16px]">
+    <div class="flex items-center gap-[8px] text-[13px] font-bold text-[#374151] mb-[12px]">
+      <i class="fa-solid fa-circle-info text-[12px] text-muted"></i>
+      تلميحات
+    </div>
+    <div *ngIf="!tips.length" class="text-center text-[12px] text-[#b3b9c2] border border-dashed border-[#e3e6ea] rounded-[9px] py-[16px]">
+      لا توجد تلميحات متاحة
+    </div>
+    <ul *ngIf="tips.length" class="flex flex-col gap-[7px] text-[12px] text-[#5b626d] pr-[16px] list-disc">
+      <li *ngFor="let t of tips">{{ t }}</li>
+    </ul>
+  </div>
+
+</div>

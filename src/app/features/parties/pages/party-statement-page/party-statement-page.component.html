@@ -1,0 +1,286 @@
+<div class="pt-5">
+
+  <app-page-header class="print:hidden" [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      class="print:hidden"
+      [showBreadcrumb]="false"
+      title="كشف حساب"
+      icon="fa-solid fa-file-invoice-dollar">
+    </app-page-header>
+
+    <!-- Party picker -->
+    <div class="print:hidden bg-white border border-line rounded-[13px] p-[26px] shadow-sm mb-[16px]">
+      <div class="flex flex-wrap gap-[8px] mb-[16px]">
+        <button (click)="selectKind('Customer')"
+          class="px-4 py-[9px] rounded-[9px] text-[13px] font-semibold transition cursor-pointer border"
+          [ngClass]="kind === 'Customer' ? 'bg-primary text-white border-primary' : 'bg-white text-[#5b626d] border-line hover:bg-[#f3f4f7]'">
+          <i class="fa-solid fa-user"></i> عميل
+        </button>
+        <button (click)="selectKind('Supplier')"
+          class="px-4 py-[9px] rounded-[9px] text-[13px] font-semibold transition cursor-pointer border"
+          [ngClass]="kind === 'Supplier' ? 'bg-primary text-white border-primary' : 'bg-white text-[#5b626d] border-line hover:bg-[#f3f4f7]'">
+          <i class="fa-solid fa-truck-field"></i> مورد
+        </button>
+      </div>
+
+      <!-- Backdrop overlay to dismiss dropdown -->
+      <div *ngIf="showPartyDropdown" class="fixed inset-0 z-20 cursor-default" (click)="closePartyDropdown()"></div>
+
+      <div class="relative" [class.z-20]="showPartyDropdown">
+        <button (click)="togglePartyDropdown($event)"
+          class="w-full flex items-center justify-between px-[11px] py-[9px] border border-[#e3e6ea] bg-white rounded-[9px] text-[14px] outline-none focus:border-primary transition text-right cursor-pointer">
+          <span class="truncate" [class.text-muted]="!partyId">
+            {{ selectedParty ? selectedParty.name : ('— اختر ' + partyLabel + ' —') }}
+          </span>
+          <i class="fa-solid fa-chevron-down text-muted text-[11px] ms-2"></i>
+        </button>
+
+        <!-- Searchable Popover Menu -->
+        <div *ngIf="showPartyDropdown"
+          class="absolute left-0 right-0 mt-1 bg-white border border-line rounded-[9px] shadow-lg max-h-[300px] flex flex-col overflow-hidden z-20">
+          <!-- Search input -->
+          <div class="p-2 border-b border-[#f0f1f4] bg-[#fafbfc]">
+            <div class="relative">
+              <input type="text" [(ngModel)]="partySearchText" [placeholder]="'ابحث عن ' + partyLabel + '...'"
+                class="w-full px-[10px] py-[7px] pl-[30px] border border-[#e3e6ea] rounded-[7px] text-[13px] outline-none focus:border-primary transition"
+                (click)="$event.stopPropagation()" />
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted text-[12px]"></i>
+            </div>
+          </div>
+
+          <!-- Items list -->
+          <div class="overflow-y-auto flex-1 py-1">
+            <button *ngIf="filteredParties.length" 
+              class="w-full text-right px-3 py-2 text-[13px] text-muted hover:bg-[#f6f7f9] transition cursor-pointer"
+              (click)="partyId = ''; showPartyDropdown = false; onPartySelected()">
+              — إزالة الاختيار —
+            </button>
+            <button *ngFor="let p of filteredParties" (click)="selectParty(p)"
+              class="w-full text-right px-3 py-2 text-[13px] hover:bg-primary-light/10 hover:text-primary transition cursor-pointer flex flex-col gap-0.5"
+              [class.bg-primary-light/5]="p.id === partyId"
+              [class.text-primary]="p.id === partyId">
+              <span class="font-semibold">{{ p.name }}</span>
+              <span *ngIf="p.phone" class="text-[11px] text-muted font-mono">{{ p.phone }}</span>
+            </button>
+            <div *ngIf="!filteredParties.length" class="p-3 text-[12.5px] text-muted text-center">
+              لا توجد نتائج مطابقة للبحث
+            </div>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="!parties.length" class="text-[11px] text-muted mt-[6px]">
+        لا يوجد {{ kind === 'Customer' ? 'عملاء مسجَّلون' : 'موردون مسجَّلون' }} بعد
+      </div>
+
+      <!-- Date range filter -->
+      <div *ngIf="partyId" class="flex flex-wrap items-end gap-[10px] mt-[18px] pt-[16px] border-t border-[#f0f1f4]">
+        <div class="group">
+          <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">من تاريخ</label>
+          <input type="date" [(ngModel)]="fromDate"
+            class="px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] outline-none focus:border-primary transition" />
+        </div>
+        <div class="group">
+          <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">إلى تاريخ</label>
+          <input type="date" [(ngModel)]="toDate"
+            class="px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] outline-none focus:border-primary transition" />
+        </div>
+        <button (click)="applyDateFilter()"
+          class="px-4 py-[9px] rounded-[9px] bg-primary text-white text-[13px] font-semibold hover:bg-primary-dark transition cursor-pointer">
+          <i class="fa-solid fa-filter"></i> فلترة
+        </button>
+        <button *ngIf="fromDate || toDate" (click)="clearDateFilter()"
+          class="px-4 py-[9px] rounded-[9px] border border-line bg-white text-[#5b626d] text-[13px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer">
+          إلغاء الفلتر
+        </button>
+        <a [routerLink]="'/payments'" [queryParams]="{ partyId: partyId }"
+          class="px-4 py-[9px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer ms-auto no-underline">
+          <i class="fa-solid fa-hand-holding-dollar"></i> دفعات هذا {{ partyLabel }}
+        </a>
+        <button *ngIf="statement" (click)="printStatement()"
+          class="px-4 py-[9px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer">
+          <i class="fa-solid fa-print"></i> طباعة كشف الحساب
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="print:hidden bg-white border border-line rounded-[13px] p-14 text-center text-muted shadow-sm">
+      <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+      جارٍ تحميل بيانات الحساب…
+    </div>
+
+    <div *ngIf="!loading && statementLoadError" class="print:hidden bg-white border border-line rounded-[13px] p-14 text-center text-danger shadow-sm">
+      <i class="fa-solid fa-triangle-exclamation text-[26px] block mb-3"></i>
+      تعذّر تحميل كشف الحساب
+    </div>
+
+    <!-- Linked account (from /accounting) — عرض للشاشة فقط، ليس جزءاً من كشف الحساب الرسمي المطبوع -->
+    <div *ngIf="!loading && accounting as a" class="print:hidden bg-white border border-line rounded-[13px] p-[20px] shadow-sm mb-[16px]">
+      <div class="text-[12.5px] font-bold mb-[10px] flex items-center gap-[8px] text-[#374151]">
+        <i class="fa-solid fa-link text-primary"></i> الحساب المحاسبي المرتبط
+      </div>
+      <div *ngIf="a.account as acc" class="grid grid-cols-1 sm:grid-cols-3 gap-[12px]">
+        <div><span class="text-[11.5px] text-muted block mb-[2px]">رقم الحساب</span><span class="font-semibold font-mono">{{ acc.accountCode }}</span></div>
+        <div><span class="text-[11.5px] text-muted block mb-[2px]">اسم الحساب</span><span class="font-semibold">{{ acc.accountName }}</span></div>
+        <div><span class="text-[11.5px] text-muted block mb-[2px]">نوع الحساب</span><span class="font-semibold">{{ acc.accountType }}</span></div>
+      </div>
+      <div *ngIf="!a.account" class="text-[11.5px] text-muted">لا يوجد حساب محاسبي مربوط بهذا {{ partyLabel }}</div>
+    </div>
+
+    <!-- Printable statement — يبقى في مكانه الطبيعي على الشاشة (مباشرة بعد بطاقة الحساب
+    المرتبط)، دون أي أصل يحمل print:hidden فوقه، لضمان ظهوره عند الطباعة (display:none على
+    الأصل يُسقِط الفرع بالكامل من الطباعة حتى لو كان .print-root نفسه visibility:visible). -->
+    <div *ngIf="!loading && statement as s" class="print-root">
+  <div class="print-surface bg-white border border-line rounded-[13px] shadow-sm print:border-0 print:shadow-none print:rounded-none">
+
+    <app-invoice-print-header
+      class="hidden print:block"
+      [documentTitle]="'كشف حساب ' + partyLabel"
+      [documentSubtitle]="(fromDate || toDate) ? ('الفترة: ' + (fromDate || '—') + ' إلى ' + (toDate || '—')) : 'كل الفترات'"
+      [printedAt]="today">
+    </app-invoice-print-header>
+
+    <div class="p-[22px] print:p-0 print:px-[6mm]">
+
+      <div class="text-[14px] font-bold mb-[16px] pb-[13px] border-b border-[#f0f1f4] print:mb-[5mm] print:pb-[3mm]">
+        {{ s.partyNameAr || s.partyName }}
+        <span class="text-[12px] font-normal text-muted">({{ partyTypeLabel(s.partyType) }})</span>
+      </div>
+
+      <!-- KPI cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-[12px] mb-[20px] print:gap-[6px] print:mb-[5mm] print:text-[11.5px]">
+        <div class="bg-[#f6f7f9] rounded-[9px] p-[14px] text-center print:bg-white print:border print:border-[#e3e6ea] print:rounded-none">
+          <span class="text-[11.5px] text-muted block mb-[3px]">الرصيد الافتتاحي</span>
+          <span class="font-bold text-[15px]">{{ s.openingBalance | number:'1.2-2' }}</span>
+        </div>
+        <div class="bg-[#f6f7f9] rounded-[9px] p-[14px] text-center print:bg-white print:border print:border-[#e3e6ea] print:rounded-none">
+          <span class="text-[11.5px] text-muted block mb-[3px]">إجمالي المدين</span>
+          <span class="font-bold text-[15px] text-danger print:text-black">{{ s.totalDebit | number:'1.2-2' }}</span>
+        </div>
+        <div class="bg-[#f6f7f9] rounded-[9px] p-[14px] text-center print:bg-white print:border print:border-[#e3e6ea] print:rounded-none">
+          <span class="text-[11.5px] text-muted block mb-[3px]">إجمالي الدائن</span>
+          <span class="font-bold text-[15px] text-[#0e9f6e] print:text-black">{{ s.totalCredit | number:'1.2-2' }}</span>
+        </div>
+        <div class="bg-[#eef0fb] rounded-[9px] p-[14px] text-center print:bg-white print:border print:border-[#333] print:rounded-none">
+          <span class="text-[11.5px] text-muted block mb-[3px]">الرصيد الختامي</span>
+          <span class="font-bold text-[16px] text-[#5156be] print:text-black">{{ s.closingBalance | number:'1.2-2' }}</span>
+        </div>
+      </div>
+
+      <!-- Lines -->
+      <div *ngIf="!s.lines.length" class="text-center text-[12.5px] text-[#b3b9c2] py-[20px]">
+        <i class="fa-solid fa-inbox text-[22px] block mb-2 opacity-40"></i>
+        لا توجد حركات في هذه الفترة
+      </div>
+
+      <div *ngIf="s.lines.length" class="rounded-[9px] overflow-hidden border border-[#e3e6ea] print:rounded-none print:border-[#333]">
+        <div class="overflow-x-auto print:overflow-visible">
+        <table class="w-full text-[13px] min-w-[720px] print:min-w-0 print:text-[11px]">
+          <thead>
+            <tr class="bg-[#fafbfc] text-[11.5px] text-muted border-b border-[#e3e6ea] print:bg-[#eee] print:text-black print:border-b-2 print:border-black">
+              <th class="px-[10px] py-[9px] text-right font-semibold">التاريخ</th>
+              <th class="px-[10px] py-[9px] text-right font-semibold">رقم المستند</th>
+              <th class="px-[10px] py-[9px] text-right font-semibold">نوع المستند</th>
+              <th class="px-[10px] py-[9px] text-right font-semibold">البيان</th>
+              <th class="px-[10px] py-[9px] text-center font-semibold">مدين</th>
+              <th class="px-[10px] py-[9px] text-center font-semibold">دائن</th>
+              <th class="px-[10px] py-[9px] text-center font-semibold">الرصيد</th>
+            </tr>
+          </thead>
+          <tbody class="print:hidden">
+            <tr *ngFor="let l of pagedLines" class="border-t border-[#f0f1f4] hover:bg-[#fafbfc]">
+              <td class="px-[10px] py-[8px] text-muted text-[12px] whitespace-nowrap">{{ formatDate(l.date) }}</td>
+              <td class="px-[10px] py-[8px] font-mono font-semibold whitespace-nowrap">{{ l.documentNumber }}</td>
+              <td class="px-[10px] py-[8px] whitespace-nowrap">
+                <span *ngIf="l.documentType.includes('شيك') || l.documentType.includes('Check')" class="inline-flex items-center gap-1 text-amber-700 font-medium">
+                  <i class="fa-solid fa-money-check text-[11px]"></i>
+                  {{ documentTypeLabel(l.documentType) }}
+                </span>
+                <span *ngIf="!l.documentType.includes('شيك') && !l.documentType.includes('Check')">
+                  {{ documentTypeLabel(l.documentType) }}
+                </span>
+              </td>
+              <td class="px-[10px] py-[8px]">{{ l.description }}</td>
+              <td class="px-[10px] py-[8px] text-center font-mono" [ngClass]="l.debit > 0 ? 'text-danger font-semibold' : 'text-muted'">{{ l.debit | number:'1.2-2' }}</td>
+              <td class="px-[10px] py-[8px] text-center font-mono" [ngClass]="l.credit > 0 ? 'text-[#0e9f6e] font-semibold' : 'text-muted'">{{ l.credit | number:'1.2-2' }}</td>
+              <td class="px-[10px] py-[8px] text-center font-mono font-bold">{{ l.runningBalance | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+          <tbody class="hidden print:table-row-group">
+            <tr *ngFor="let l of s.lines" class="print-avoid-break border-t print:border-t print:border-[#ccc]">
+              <td class="px-[10px] py-[8px] text-muted text-[12px] whitespace-nowrap">{{ formatDate(l.date) }}</td>
+              <td class="px-[10px] py-[8px] font-mono font-semibold whitespace-nowrap">{{ l.documentNumber }}</td>
+              <td class="px-[10px] py-[8px] whitespace-nowrap">{{ documentTypeLabel(l.documentType) }}</td>
+              <td class="px-[10px] py-[8px]">{{ l.description }}</td>
+              <td class="px-[10px] py-[8px] text-center font-mono" [ngClass]="l.debit > 0 ? 'text-danger font-semibold' : 'text-muted'">{{ l.debit | number:'1.2-2' }}</td>
+              <td class="px-[10px] py-[8px] text-center font-mono" [ngClass]="l.credit > 0 ? 'text-[#0e9f6e] font-semibold' : 'text-muted'">{{ l.credit | number:'1.2-2' }}</td>
+              <td class="px-[10px] py-[8px] text-center font-mono font-bold">{{ l.runningBalance | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="s.lines.length > 0"
+        class="flex flex-wrap items-center justify-between gap-3 mt-4 p-3 bg-white border border-[#e3e6ea] rounded-[9px] text-[12.5px] text-muted print:hidden">
+        <div class="flex items-center gap-4">
+          <span>
+            عرض {{ startItemIndex }} - {{ endItemIndex }} من أصل {{ s.lines.length }} حركة
+          </span>
+          <div class="flex items-center gap-1.5">
+            <span>عدد العناصر:</span>
+            <app-select
+          [options]="pageSizeOptions.map(size => ({value: '' + size, label: '' + size}))"
+          (changed)="onPageSizeChange($event)"
+          />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5" *ngIf="totalPages > 1">
+          <button (click)="setPage(1)" [disabled]="page === 1"
+            class="px-2.5 py-1.5 border border-[#e3e6ea] rounded-[6px] hover:bg-[#f6f7f9] disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
+            title="الصفحة الأولى">
+            <i class="fa-solid fa-angles-right"></i>
+          </button>
+          <button (click)="setPage(page - 1)" [disabled]="page === 1"
+            class="px-3 py-1.5 border border-[#e3e6ea] rounded-[6px] hover:bg-[#f6f7f9] disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer">
+            السابق
+          </button>
+          <span class="px-2 font-semibold text-[#374151]">
+            {{ page }} / {{ totalPages }}
+          </span>
+          <button (click)="setPage(page + 1)" [disabled]="page === totalPages"
+            class="px-3 py-1.5 border border-[#e3e6ea] rounded-[6px] hover:bg-[#f6f7f9] disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer">
+            التالي
+          </button>
+          <button (click)="setPage(totalPages)" [disabled]="page === totalPages"
+            class="px-2.5 py-1.5 border border-[#e3e6ea] rounded-[6px] hover:bg-[#f6f7f9] disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
+            title="الصفحة الأخيرة">
+            <i class="fa-solid fa-angles-left"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Print-only signatures -->
+      <div class="print-avoid-break hidden print:flex justify-between mt-[14mm] px-[6mm] pb-[8mm]">
+        <div class="text-center w-[45%]">
+          <div class="border-t border-black pt-[4px] text-[11px]">توقيع المُعِد</div>
+        </div>
+        <div class="text-center w-[45%]">
+          <div class="border-t border-black pt-[4px] text-[11px]">اعتماد المحاسب</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+  </div>
+
+  <app-quick-actions-panel class="print:hidden" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

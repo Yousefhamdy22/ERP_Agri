@@ -1,0 +1,257 @@
+<app-page-header
+  title="كشف الحساب التفصيلي"
+  subtitle="Detailed Account Ledger Statement"
+  icon="fa-solid fa-file-invoice-dollar">
+</app-page-header>
+
+<!-- Filters -->
+<div class="rev-exp-filters print:hidden">
+  <div class="filter-row flex flex-wrap gap-4 items-end">
+    
+    <div class="filter-group min-w-[280px] flex-1">
+      <label>اختر الحساب</label>
+      <app-searchable-combo-box storageKey="accounts"
+        [items]="accountComboItems"
+        [(ngModel)]="selectedAccountId"
+        (itemSelected)="onAccountChanged()"
+        placeholder="ابحث بالاسم أو كود الحساب…"
+        emptyMessage="لا توجد حسابات">
+      </app-searchable-combo-box>
+    </div>
+
+    <div class="filter-group min-w-[180px]">
+      <label>الفترة المالية</label>
+      <app-select
+          [(ngModel)]="selectedPeriodId"
+          [options]="[{value: '', label: 'كل الفترات'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode})))"
+          placeholder="كل الفترات"
+          (changed)="loadReport()"
+          [disabled]="periodsLoading"
+          />
+    </div>
+
+    <div class="filter-group min-w-[180px]">
+      <label>الفرع</label>
+      <app-select
+          [(ngModel)]="selectedBranchId"
+          [options]="[{value: '', label: 'كل الفروع'}].concat(branches.map(b => ({value: b.id, label: b.name})))"
+          placeholder="كل الفروع"
+          (changed)="applyFilters()"
+          [searchable]="true"
+          />
+    </div>
+
+    <div class="filter-group w-[140px]">
+      <label>من تاريخ</label>
+      <input type="date" [(ngModel)]="fromDate" />
+    </div>
+
+    <div class="filter-group w-[140px]">
+      <label>إلى تاريخ</label>
+      <input type="date" [(ngModel)]="toDate" />
+    </div>
+  </div>
+
+  <div class="filter-row flex flex-wrap gap-4 items-end mt-4">
+    <div class="filter-group min-w-[180px]">
+      <label>نوع المستند</label>
+      <app-select
+          [(ngModel)]="referenceType"
+          [options]="[{value: '', label: 'كل المستندات'}, {value: 'SalesInvoice', label: 'فاتورة مبيعات'}, {value: 'PurchaseInvoice', label: 'فاتورة مشتريات'}, {value: 'Payment', label: 'سند صرف / قبض'}, {value: 'Adjustment', label: 'قيد تسوية'}, {value: 'OpeningBalance', label: 'رصيد افتتاحي'}, {value: 'SalesReturn', label: 'مرتجع مبيعات'}, {value: 'PurchaseReturn', label: 'مرتجع مشتريات'}]"
+          />
+    </div>
+
+    <div class="filter-group min-w-[200px] flex-1">
+      <label>بحث بالبيان أو رقم القيد</label>
+      <input type="text" [(ngModel)]="searchQuery" placeholder="بحث بالبيان أو الرقم..." />
+    </div>
+
+    <div class="filter-actions">
+      <button class="btn-primary" (click)="applyFilters()" [disabled]="loading || !selectedAccountId">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        فلترة
+      </button>
+      <button type="button" class="btn-preview-pdf" (click)="previewPdf()" [disabled]="!selectedPeriodId || pdfLoading">
+        <i class="fa-solid" [ngClass]="pdfLoading ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i>
+        معاينة PDF
+      </button>
+      <button class="btn-outline" (click)="clearFilters()" [disabled]="loading || !selectedAccountId">
+        إلغاء
+      </button>
+      <button class="btn-outline" (click)="printReport()" [disabled]="!report">
+        <i class="fa-solid fa-print"></i>
+        طباعة
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div *ngIf="loading" class="loading-state">
+  <i class="fa-solid fa-spinner fa-spin"></i>
+  <span>جاري تحميل كشف الحساب التفصيلي...</span>
+</div>
+
+<!-- Error -->
+<div *ngIf="error" class="error-state">
+  <i class="fa-solid fa-circle-exclamation"></i>
+  <span>{{ error }}</span>
+</div>
+
+<!-- Report Content -->
+<div *ngIf="report && !loading" class="report-content mt-6">
+
+  <!-- Summary Cards -->
+  <div class="summary-cards print:hidden">
+    <div class="summary-card revenue">
+      <div class="card-icon"><i class="fa-solid fa-scale-unbalanced"></i></div>
+      <div class="card-body">
+        <span class="card-label">الرصيد الافتتاحي</span>
+        <span class="card-value">{{ formatCurrency(report.summary.openingBalance) }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card gross">
+      <div class="card-icon"><i class="fa-solid fa-arrow-trend-up text-danger"></i></div>
+      <div class="card-body">
+        <span class="card-label">إجمالي المدين</span>
+        <span class="card-value text-danger">{{ formatCurrency(report.summary.totalDebit) }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card net">
+      <div class="card-icon"><i class="fa-solid fa-arrow-trend-down text-[#0e9f6e]"></i></div>
+      <div class="card-body">
+        <span class="card-label">إجمالي الدائن</span>
+        <span class="card-value text-[#0e9f6e]">{{ formatCurrency(report.summary.totalCredit) }}</span>
+      </div>
+    </div>
+
+    <div class="summary-card cogs">
+      <div class="card-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+      <div class="card-body">
+        <span class="card-label">الرصيد الختامي</span>
+        <span class="card-value">{{ formatCurrency(report.summary.closingBalance) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unified Professional Print Header -->
+  <app-invoice-print-header
+    documentTitle="كشف حساب تفصيلي دليل الحسابات"
+    [documentSubtitle]="'حساب: ' + report.accountCode + ' — ' + (report.accountArabicName || report.accountName) + ' | ' + (report.accountNature === 'Debit' ? 'مدين' : 'دائن') + ' | ' + report.periodName"
+    [printedAt]="today"
+    class="hidden print:block mb-4"
+  ></app-invoice-print-header>
+
+  <div class="bg-white p-4 rounded-[13px] border border-[#e3e6ea] mb-4 hidden print:block">
+    <div class="grid grid-cols-4 gap-4 text-center text-xs">
+      <div><strong>الرصيد الافتتاحي:</strong> {{ formatCurrency(report.summary.openingBalance) }}</div>
+      <div><strong>إجمالي المدين:</strong> {{ formatCurrency(report.summary.totalDebit) }}</div>
+      <div><strong>إجمالي الدائن:</strong> {{ formatCurrency(report.summary.totalCredit) }}</div>
+      <div><strong>الرصيد الختامي:</strong> {{ formatCurrency(report.summary.closingBalance) }}</div>
+    </div>
+  </div>
+
+  <!-- Lines -->
+  <div *ngIf="!report.entries.length" class="text-center text-[12.5px] text-[#b3b9c2] py-[20px]">
+    <i class="fa-solid fa-inbox text-[22px] block mb-2 opacity-40"></i>
+    لا توجد قيود أو حركات مطابقة في هذه الفترة
+  </div>
+
+  <div *ngIf="report.entries.length" class="rounded-[9px] overflow-hidden border border-[#e3e6ea] bg-white print:border-[#333]">
+    <div class="overflow-x-auto">
+      <table class="w-full text-[13px] border-collapse print:text-[11px]">
+        <thead>
+          <tr class="bg-[#fafbfc] border-b border-[#e3e6ea] print:bg-[#eee] print:border-b-2 print:border-black">
+            <th class="px-4 py-3 text-right font-semibold w-[120px]">التاريخ</th>
+            <th class="px-4 py-3 text-right font-semibold w-[120px]">رقم القيد</th>
+            <th class="px-4 py-3 text-right font-semibold w-[140px]">نوع الحركة</th>
+            <th class="px-4 py-3 text-right font-semibold">البيان</th>
+            <th class="px-4 py-3 text-center font-semibold w-[120px]">مدين</th>
+            <th class="px-4 py-3 text-center font-semibold w-[120px]">دائن</th>
+            <th class="px-4 py-3 text-center font-semibold w-[130px]">الرصيد المتراكم</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let entry of report.entries" class="border-t border-[#f0f1f4] hover:bg-[#fafbfc] print:border-t print:border-[#ccc]">
+            <td class="px-4 py-3 text-right whitespace-nowrap">{{ entry.date | date:'yyyy/MM/dd' }}</td>
+            <td class="px-4 py-3 text-right font-mono font-semibold whitespace-nowrap">{{ entry.entryNumber }}</td>
+            <td class="px-4 py-3 text-right">{{ getDocTypeLabel(entry.entryType) }}</td>
+            <td class="px-4 py-3 text-right">{{ entry.description }}</td>
+            
+            <td class="px-4 py-3 text-center font-mono" 
+                [ngClass]="entry.debitAmount > 0 ? 'text-danger font-semibold' : 'text-muted'">
+              {{ entry.debitAmount > 0 ? formatCurrency(entry.debitAmount) : '—' }}
+            </td>
+
+            <td class="px-4 py-3 text-center font-mono" 
+                [ngClass]="entry.creditAmount > 0 ? 'text-[#0e9f6e] font-semibold' : 'text-muted'">
+              {{ entry.creditAmount > 0 ? formatCurrency(entry.creditAmount) : '—' }}
+            </td>
+
+            <td class="px-4 py-3 text-center font-mono font-bold">{{ formatCurrency(entry.runningBalance) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div *ngIf="report && report.totalCount > 0" class="flex flex-wrap justify-between items-center gap-3 mt-4 print:hidden bg-white p-3 rounded-[9px] border border-[#e3e6ea] text-[12.5px] text-muted">
+    <div class="flex items-center gap-4">
+      <div>
+        عرض {{ startItemIndex }} - {{ endItemIndex }} من أصل {{ report.totalCount }} حركة (صفحة {{ report.pageNumber }} من {{ report.totalPages }})
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span>عدد العناصر:</span>
+        <app-select
+          [options]="pageSizeOptions.map(s => ({value: s, label: '' + s}))"
+          (changed)="onPageSizeChange($event)"
+          />
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-1.5" *ngIf="report.totalPages > 1">
+      <button class="px-2.5 py-1.5 border border-[#e3e6ea] rounded-[6px] hover:bg-[#f6f7f9] disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
+              [disabled]="report.pageNumber === 1"
+              (click)="loadReport(1)"
+              title="الصفحة الأولى">
+        <i class="fa-solid fa-angles-right"></i>
+      </button>
+      <button class="px-3 py-1.5 border border-[#e3e6ea] rounded-[6px] hover:bg-[#f6f7f9] disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
+              [disabled]="report.pageNumber === 1"
+              (click)="loadReport(report.pageNumber - 1)">
+        السابق
+      </button>
+      <span class="px-2 font-semibold text-[#374151]">
+        {{ report.pageNumber }} / {{ report.totalPages }}
+      </span>
+      <button class="px-3 py-1.5 border border-[#e3e6ea] rounded-[6px] hover:bg-[#f6f7f9] disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
+              [disabled]="report.pageNumber === report.totalPages"
+              (click)="loadReport(report.pageNumber + 1)">
+        التالي
+      </button>
+      <button class="px-2.5 py-1.5 border border-[#e3e6ea] rounded-[6px] hover:bg-[#f6f7f9] disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
+              [disabled]="report.pageNumber === report.totalPages"
+              (click)="loadReport(report.totalPages)"
+              title="الصفحة الأخيرة">
+        <i class="fa-solid fa-angles-left"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<app-pdf-preview-modal
+  [isOpen]="pdfModalOpen"
+  title="معاينة دفتر الأستاذ العام (PDF)"
+  subtitle="General Ledger"
+  [pdfUrl]="pdfUrl"
+  [fileName]="pdfFileName"
+  [loading]="pdfLoading"
+  [error]="pdfError"
+  (close)="closePdfModal()"
+  (download)="downloadPdf()"
+  (print)="printReport()"
+  (retry)="previewPdf()"
+></app-pdf-preview-modal>

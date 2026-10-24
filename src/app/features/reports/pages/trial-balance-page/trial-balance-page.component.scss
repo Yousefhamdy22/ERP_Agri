@@ -1,0 +1,221 @@
+// Styles for Trial Balance page (consistent with the rest of the application)
+
+.rev-exp-filters {
+  background: #white;
+  border: 1px solid #e3e6ea;
+  border-radius: 13px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.filter-row {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  select, input {
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid #e3e6ea;
+    border-radius: 9px;
+    background: #fff;
+    font-size: 13.5px;
+    outline: none;
+    transition: border-color 0.2s;
+
+    &:focus {
+      border-color: var(--color-primary, #5156be);
+    }
+  }
+}
+
+.filter-actions {
+  display: flex;
+  gap: 10px;
+
+  .btn-preview-pdf {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 16px;
+    height: 40px;
+    border: 1px solid #fed7aa;
+    border-radius: 9px;
+    background: #fff7ed;
+    color: #c2410c;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    i {
+      color: #ea580c;
+    }
+
+    &:hover:not(:disabled) {
+      background: #ffedd5;
+      border-color: #fdba74;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.loading-state, .error-state {
+  background: #white;
+  border: 1px solid #e3e6ea;
+  border-radius: 13px;
+  padding: 40px;
+  text-align: center;
+  color: #6b7280;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+
+  i {
+    font-size: 24px;
+    display: block;
+    margin-bottom: 12px;
+  }
+}
+
+.error-state {
+  color: #ef4444;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #white;
+  border: 1px solid #e3e6ea;
+  border-radius: 13px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+
+  .card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: #eef0fb;
+    color: #5156be;
+    font-size: 20px;
+  }
+
+  .card-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card-label {
+    font-size: 12.5px;
+    color: #6b7280;
+  }
+
+  .card-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  &.revenue {
+    .card-icon {
+      background: #fdeaea;
+      color: #dc2626;
+    }
+  }
+
+  &.gross {
+    .card-icon {
+      background: #eaf7f1;
+      color: #0e9f6e;
+    }
+  }
+
+  &.net {
+    .card-icon {
+      background: #eef0fb;
+      color: #5156be;
+    }
+
+    &.negative {
+      .card-icon {
+        background: #fdeaea;
+        color: #dc2626;
+      }
+    }
+  }
+}
+
+.report-content {
+  margin-top: 20px;
+}
+
+.btn-primary {
+  height: 40px;
+  padding: 0 18px;
+  background: var(--color-primary, #5156be);
+  color: #fff;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 13.5px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-outline {
+  height: 40px;
+  padding: 0 18px;
+  background: #fff;
+  color: #4b5563;
+  border: 1px solid #e3e6ea;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #f9fafb;
+  }
+}

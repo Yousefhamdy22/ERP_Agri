@@ -1,0 +1,82 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="اضافة فترة مالية"
+      icon="fa-solid fa-calendar-days">
+    </app-page-header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            كود الفترة <span class="text-danger">*</span>
+          </label>
+          <input formControlName="periodCode" placeholder="مثال: 2026-01"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+            [ngClass]="invalid('periodCode') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('periodCode')" class="text-[11px] text-danger mt-[4px]">كود الفترة مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الفرع <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <app-select
+          formControlName="branchId"
+          [options]="[{value: '', label: '— كل الفروع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="— كل الفروع —"
+          [searchable]="true"
+          />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            تاريخ البداية <span class="text-danger">*</span>
+          </label>
+          <input type="date" formControlName="startDate"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('startDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            تاريخ النهاية <span class="text-danger">*</span>
+          </label>
+          <input type="date" formControlName="endDate"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('endDate') || endBeforeStart ? 'border-danger' : 'border-[#e3e6ea]'" />
+          <div *ngIf="invalid('endDate')" class="text-[11px] text-danger mt-[4px]">تاريخ النهاية مطلوب</div>
+          <div *ngIf="endBeforeStart" class="text-[11px] text-danger mt-[4px]">تاريخ النهاية يجب أن يكون بعد تاريخ البداية</div>
+        </div>
+
+        <div class="col-span-1 md:col-span-2 group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الوصف <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <textarea formControlName="description" rows="2" placeholder="وصف مختصر للفترة المالية…"
+            class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary resize-none transition"></textarea>
+        </div>
+
+      </div>
+
+      <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+        <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">
+          {{ saving ? 'جارٍ الحفظ…' : 'حفظ الفترة المالية' }}
+        </app-button>
+        <app-button variant="ghost" routerLink="/accounting/fiscal-periods/manage">إلغاء</app-button>
+      </div>
+    </form>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

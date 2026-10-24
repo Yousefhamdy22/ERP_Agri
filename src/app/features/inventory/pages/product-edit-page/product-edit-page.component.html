@@ -1,0 +1,215 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="تعديل صنف"
+      icon="fa-solid fa-pen-to-square">
+    </app-page-header>
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm mb-4 text-center text-muted text-[14px]">
+      <i class="fa-solid fa-spinner fa-spin ml-[6px]"></i> جارٍ تحميل بيانات الصنف…
+    </div>
+
+    <!-- Product Info Card -->
+    <div *ngIf="!loading" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm mb-4">
+
+      <div class="text-[14px] font-bold mb-[18px] pb-[13px] border-b border-[#f0f1f4] flex items-center gap-[8px] justify-between">
+        <span class="flex items-center gap-[8px]"><i class="fa-solid fa-box-open text-primary"></i> معلومات المنتج</span>
+        <span *ngIf="product" class="text-[11.5px] font-semibold text-muted">
+          SKU: <span class="font-mono">{{ product.sku }}</span>
+        </span>
+      </div>
+
+      <form [formGroup]="productForm" id="productForm">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+          <!-- name -->
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              الاسم <span class="text-danger">*</span>
+            </label>
+            <input formControlName="name" autofocus placeholder="مثال: هاتف ذكي"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalidP('name') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            <div *ngIf="invalidP('name')" class="text-[11px] text-danger mt-[4px]">الاسم مطلوب</div>
+          </div>
+
+          <!-- branchId -->
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              الفرع <span class="text-danger">*</span>
+            </label>
+            <app-select
+          formControlName="branchId"
+          [options]="[{value: '', label: '— اختر الفرع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="— اختر الفرع —"
+          [searchable]="true"
+          />
+            <div *ngIf="invalidP('branchId')" class="text-[11px] text-danger mt-[4px]">الفرع مطلوب</div>
+          </div>
+
+          <!-- barcode -->
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              الباركود <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input formControlName="barcode" placeholder="6291041501062"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+
+          <!-- Category -->
+          <div class="col-span-1 md:col-span-2">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]"
+              [ngClass]="invalidP('categoryId') ? 'text-danger' : ''">
+              الفئة <span class="text-danger">*</span>
+            </label>
+            <app-tree-select
+              formControlName="categoryId"
+              [options]="categoryOptions"
+              placeholder="— اختر الفئة —"
+              emptyValue=""
+              [invalid]="invalidP('categoryId')">
+            </app-tree-select>
+            <div *ngIf="invalidP('categoryId')" class="text-[11px] text-danger mt-[4px]">الفئة مطلوبة</div>
+          </div>
+
+          <!-- unitId -->
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              الوحدة <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <app-select
+          formControlName="unitId"
+          [options]="[{value: '', label: '— اختر الوحدة —'}].concat(measureUnits.map(u => ({value: u.id, label: u.nameAr || u.name})))"
+          placeholder="— اختر الوحدة —"
+          [searchable]="true"
+          />
+          </div>
+
+          <!-- preferredSupplierId -->
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              المورّد المفضَّل <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <app-select
+          formControlName="preferredSupplierId"
+          [options]="[{value: '', label: '— بدون —'}].concat(suppliers.map(s => ({value: s.id, label: s.name})))"
+          placeholder="— بدون —"
+          [searchable]="true"
+          />
+          </div>
+
+          <!-- minimumStock -->
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              الحد الأدنى للمخزون <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input type="number" formControlName="minimumStock" placeholder="0" min="0"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+
+          <!-- color -->
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              اللون <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <app-select
+          formControlName="colorId"
+          [options]="[{value: '', label: '— اختر اللون —'}].concat(colors.map(c => ({value: c.id, label: c.name})))"
+          placeholder="— اختر اللون —"
+          [searchable]="true"
+          />
+          </div>
+
+          <!-- color swatch -->
+          <div class="group" *ngIf="selectedColorHex">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">معاينة اللون</label>
+            <div class="flex items-center gap-[8px] h-[38px]">
+              <span class="w-[24px] h-[24px] rounded-[6px] border border-[#e3e6ea] shrink-0" [style.background]="selectedColorHex"></span>
+            </div>
+          </div>
+
+          <!-- taxRatePct -->
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              نسبة الضريبة % <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input type="number" formControlName="taxRatePct" placeholder="0" min="0" max="100"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+
+          <!-- reorderLevel -->
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              حد إعادة الطلب <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input type="number" formControlName="reorderLevel" placeholder="0" min="0"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+
+          <!-- weightKg -->
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              الوزن (كجم) <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input type="number" formControlName="weightKg" placeholder="0.00" step="0.01" min="0"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+
+          <!-- ── الكمية والسعر — like add page ── -->
+          <div class="col-span-1 md:col-span-2 pt-[6px] mt-[2px] border-t border-[#f0f1f4] text-[12px] font-semibold text-[#374151] flex items-center gap-[7px]">
+            <i class="fa-solid fa-boxes-stacked text-primary"></i> الكمية المتاحة والسعر الأساسي
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              الكمية المتاحة
+            </label>
+            <input type="number" formControlName="quantity" placeholder="0" step="1" min="0"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+            <div *ngIf="productForm.value.quantity !== null && productForm.value.quantity !== currentTotalQty"
+              class="text-[11px] font-semibold mt-[4px] flex items-center gap-[4px]"
+              [ngClass]="productForm.value.quantity! > currentTotalQty ? 'text-[#0e9f6e]' : 'text-danger'">
+              <i [ngClass]="productForm.value.quantity! > currentTotalQty ? 'fa-solid fa-arrow-up' : 'fa-solid fa-arrow-down'" class="text-[9px]"></i>
+              {{ productForm.value.quantity! > currentTotalQty ? '+' : '' }}{{ productForm.value.quantity! - currentTotalQty | number:'1.0-2' }}
+              (الحالية: {{ currentTotalQty | number:'1.0-2' }})
+            </div>
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              سعر التكلفة
+            </label>
+            <input type="number" formControlName="costPrice" placeholder="0.00" step="0.01" min="0"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+              سعر البيع
+            </label>
+            <input type="number" formControlName="sellPrice" placeholder="0.00" step="0.01" min="0"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+
+        </div>
+      </form>
+    </div>
+
+    <!-- Actions -->
+    <div *ngIf="!loading" class="flex flex-wrap gap-[10px] mb-6">
+      <app-button variant="primary" icon="fa-solid fa-floppy-disk" (click)="saveProduct()" [disabled]="saving">
+        {{ saving ? 'جارٍ الحفظ…' : 'حفظ التعديلات' }}
+      </app-button>
+      <app-button variant="ghost" routerLink="/inventory/products/manage">إلغاء</app-button>
+    </div>
+  </div>
+
+  </div>
+</div>

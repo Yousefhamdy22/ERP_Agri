@@ -1,0 +1,235 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="ادارة الفروع"
+      icon="fa-solid fa-code-branch"
+      [subtitle]="'إجمالي: ' + totalCount + ' فرع'">
+    </app-page-header>
+
+    <!-- Edit Modal -->
+    <div *ngIf="editingBranch"
+      class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+      (click)="cancelEdit()">
+      <div class="bg-white rounded-[16px] border border-line w-full max-w-[640px] shadow-[0_20px_60px_rgba(0,0,0,.18)] max-h-[90vh] overflow-y-auto"
+        (click)="$event.stopPropagation()">
+
+        <div class="flex items-center justify-between px-[22px] py-[16px] border-b border-[#f0f1f4]">
+          <div class="text-[15px] font-bold flex items-center gap-[8px]">
+            <i class="fa-solid fa-pen-to-square text-primary"></i>
+            تعديل: {{ editingBranch.nameAr }}
+          </div>
+          <button (click)="cancelEdit()"
+            class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px]">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <form [formGroup]="editForm" (ngSubmit)="saveEdit()" class="p-[22px]">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-[14px]">
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+                الاسم بالعربية <span class="text-danger">*</span>
+              </label>
+              <input formControlName="nameAr"
+                class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+                [ngClass]="invalid('nameAr') ? 'border-danger' : 'border-[#e3e6ea]'" />
+              <div *ngIf="invalid('nameAr')" class="text-[11px] text-danger mt-[4px]">مطلوب</div>
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+                الاسم بالإنجليزية <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+              </label>
+              <input formControlName="name"
+                class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+                كود الفرع <span class="text-danger">*</span>
+              </label>
+              <input formControlName="code"
+                class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+                [ngClass]="invalid('code') ? 'border-danger' : 'border-[#e3e6ea]'" />
+              <div *ngIf="invalid('code')" class="text-[11px] text-danger mt-[4px]">مطلوب</div>
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">نوع الفرع</label>
+              <app-select
+          formControlName="branchType"
+          [options]="branchTypes.map(t => ({value: t.value, label: t.label}))"
+          />
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">المدينة</label>
+              <input formControlName="city"
+                class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">العملة</label>
+              <app-select
+          formControlName="currency"
+          [options]="currencies.map(c => ({value: c.value, label: c.label}))"
+          />
+            </div>
+
+            <div class="col-span-1 md:col-span-2">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">العنوان</label>
+              <input formControlName="address"
+                class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الهاتف</label>
+              <input formControlName="phone"
+                class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+            </div>
+
+            <div class="group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">البريد الإلكتروني</label>
+              <input formControlName="email"
+                class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+                [ngClass]="invalid('email') ? 'border-danger' : 'border-[#e3e6ea]'" />
+              <div *ngIf="invalid('email')" class="text-[11px] text-danger mt-[4px]">بريد إلكتروني غير صالح</div>
+            </div>
+
+            <div class="col-span-1 md:col-span-2 group">
+              <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">اسم المدير</label>
+              <input formControlName="managerName"
+                class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+            </div>
+          </div>
+
+          <div class="flex gap-[10px] mt-[18px] pt-[14px] border-t border-[#f0f1f4]">
+            <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">
+              {{ saving ? 'جارٍ الحفظ…' : 'حفظ التعديلات' }}
+            </app-button>
+            <app-button variant="ghost" (click)="cancelEdit()">إلغاء</app-button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="mb-[16px] flex flex-wrap gap-[10px] items-center">
+      <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[10px] w-full sm:w-72 shadow-sm">
+        <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+        <input [ngModel]="search" (ngModelChange)="onSearchChange($event)" placeholder="بحث بالاسم أو الكود أو المدينة…"
+          class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+        <button *ngIf="search" (click)="clearSearch()"
+          class="text-[#a3a8b2] hover:text-ink bg-transparent border-0 cursor-pointer text-[13px]">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <app-select
+          [(ngModel)]="branchType"
+          [options]="branchTypeOptions"
+          placeholder="كل الأنواع"
+          (changed)="onFilterChange()"
+          />
+
+      <app-select
+          [(ngModel)]="activeFilter"
+          [options]="[{value: 'all', label: 'كل الحالات'}, {value: 'active', label: 'نشط فقط'}, {value: 'inactive', label: 'غير نشط فقط'}]"
+          (changed)="onFilterChange()"
+          />
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[13.5px] min-w-[900px]">
+        <thead>
+          <tr class="bg-primary text-white text-[12px]">
+            <th class="px-[16px] py-[13px] text-right font-semibold w-[40px]">#</th>
+            <th class="px-3 py-[13px] text-right font-semibold w-[110px]">الكود</th>
+            <th class="px-[16px] py-[13px] text-right font-semibold">الاسم</th>
+            <th class="px-3 py-[13px] text-right font-semibold">المدينة</th>
+            <th class="px-3 py-[13px] text-right font-semibold">النوع</th>
+            <th class="px-3 py-[13px] text-right font-semibold">المدير</th>
+            <th class="px-3 py-[13px] text-center font-semibold w-[90px]">الأصناف</th>
+            <th class="px-3 py-[13px] text-center font-semibold w-[90px]">الحالة</th>
+            <th class="w-[60px]"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of branches; let i = index"
+            class="border-t border-[#f1f2f4] hover:bg-[#fafbfc] transition">
+            <td class="px-[16px] py-[11px] text-muted text-[12px]">{{ (page - 1) * pageSize + i + 1 }}</td>
+            <td class="px-3 py-[11px] font-mono text-[12px] text-primary-text font-bold">{{ b.code }}</td>
+            <td class="px-[16px] py-[11px] font-semibold">
+              {{ b.nameAr }}
+              <span *ngIf="b.isHeadquarters" class="ms-1 px-[6px] py-[1px] rounded-full text-[10px] font-semibold bg-[#eef0fb] text-[#5156be]">
+                رئيسي
+              </span>
+            </td>
+            <td class="px-3 py-[11px] text-[#5b626d]">{{ b.city }}</td>
+            <td class="px-3 py-[11px] text-[#5b626d]">{{ branchTypeLabel(b.branchType) }}</td>
+            <td class="px-3 py-[11px] text-[#5b626d]">{{ b.managerName }}</td>
+            <td class="px-3 py-[11px] text-center text-[#5b626d]">{{ b.totalProducts }}</td>
+            <td class="px-3 py-[11px] text-center">
+              <span class="px-2 py-[3px] rounded-full text-[11px] font-semibold"
+                [ngClass]="b.isActive ? 'bg-[#eaf7f1] text-[#0e9f6e]' : 'bg-[#fdeaea] text-danger'">
+                {{ b.isActive ? 'نشط' : 'غير نشط' }}
+              </span>
+            </td>
+            <td class="px-2 py-[11px]">
+              <div class="flex items-center justify-center gap-[5px]">
+                <button (click)="startEdit(b)" [disabled]="loadingDetail"
+                  class="w-7 h-7 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[12px] cursor-pointer disabled:opacity-40"
+                  title="تعديل">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div *ngIf="loading" class="p-12 text-center text-muted">
+        <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+        جارٍ تحميل الفروع…
+      </div>
+      <div *ngIf="!loading && branches.length === 0" class="p-12 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-code-branch text-[30px] block mb-3 opacity-40"></i>
+        لا توجد فروع مطابقة.
+        <div class="mt-3">
+          <a routerLink="/inventory/branches/add" class="text-primary-text text-[13px] font-semibold hover:underline">
+            <i class="fa-solid fa-plus text-[11px]"></i> اضافة أول فرع
+          </a>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="!loading && branches.length > 0" class="flex flex-wrap items-center justify-between gap-[10px] px-[16px] py-[12px] border-t border-[#f1f2f4] text-[12.5px] text-muted">
+        <span>صفحة {{ page }} من {{ totalPages }} — {{ totalCount }} فرع</span>
+        <div class="flex gap-[8px]">
+          <button (click)="prevPage()" [disabled]="!hasPreviousPage"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-right"></i>
+          </button>
+          <button (click)="nextPage()" [disabled]="!hasNextPage"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-left"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

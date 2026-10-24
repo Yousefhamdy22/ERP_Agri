@@ -1,0 +1,48 @@
+<div class="h-[64px] bg-white border-b border-line flex items-center gap-1.5 sm:gap-4 px-2 sm:px-[22px] sticky top-0 z-50 max-w-full">
+  <!-- زر القائمة للشاشات الصغيرة -->
+  <button (click)="nav.toggleMobileNav()"
+    class="lg:hidden w-[36px] sm:w-[38px] h-[36px] sm:h-[38px] rounded-[9px] border border-line bg-white text-[#5b626d] hover:bg-[#f3f4f7] hover:text-primary flex items-center justify-center transition cursor-pointer shrink-0"
+    title="القائمة الرئيسية">
+    <i class="fa-solid fa-bars text-[15px] sm:text-[16px]"></i>
+  </button>
+
+  <div class="flex items-center gap-1.5 sm:gap-3 shrink min-w-0">
+    <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-[10px] overflow-hidden flex items-center justify-center bg-white border border-[#e3e6ea] shadow-sm shrink-0 p-0.5">
+      <img src="log.jpg" alt="Logo" class="w-full h-full object-contain" />
+    </div>
+    <div class="min-w-0">
+      <div class="font-bold text-[12.5px] sm:text-[16px] leading-tight text-[#1e2330] truncate max-w-[110px] xs:max-w-[160px] sm:max-w-none">نظام المحاسبة والمخازن</div>
+      <div class="hidden sm:block text-[11px] sm:text-[11.5px] text-muted font-medium">Accounting & Inventory ERP</div>
+    </div>
+  </div>
+
+  <div class="ms-auto flex items-center gap-1 sm:gap-2 shrink-0">
+    <app-global-search></app-global-search>
+
+    <!-- إعدادات النظام (يظهر على التابلت والديسكتوب، وموجود داخل درج القائمة للموبايل) -->
+    <a routerLink="/settings"
+       routerLinkActive="!bg-primary !text-white !border-primary"
+       class="hidden sm:flex w-[36px] sm:w-[38px] h-[36px] sm:h-[38px] rounded-[9px] border border-line bg-white text-[#5b626d] hover:bg-[#f3f4f7] items-center justify-center transition cursor-pointer shrink-0"
+       title="إعدادات النظام">
+      <i class="fa-solid fa-gear text-[14px]"></i>
+    </a>
+
+    <div class="hidden sm:block w-px h-[24px] sm:h-[26px] bg-line mx-0.5 sm:mx-1"></div>
+    <div class="flex items-center gap-1 sm:gap-[9px]">
+      <div class="hidden md:block text-left leading-tight">
+        <div class="text-[13px] font-semibold truncate max-w-[120px]">{{ auth.user?.fullName || auth.user?.email || 'زائر' }}</div>
+        <div class="text-[11px] text-muted">{{ auth.user?.roles?.[0] || '—' }}</div>
+      </div>
+      <div (click)="nav.toggleMobileNav()"
+           class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary-soft text-primary flex items-center justify-center shrink-0 cursor-pointer lg:cursor-default"
+           [title]="auth.user?.fullName || auth.user?.email || 'مستخدم'">
+        <i class="fa-solid fa-user text-[13px]"></i>
+      </div>
+      <!-- زر تسجيل الخروج (متاح أيضاً بشكل أوضح وأكبر داخل درج الموبايل) -->
+      <button (click)="logout()" title="تسجيل الخروج"
+        class="hidden sm:flex w-[36px] sm:w-[38px] h-[36px] sm:h-[38px] rounded-[9px] border border-line bg-white text-[#5b626d] hover:bg-[#fdeaea] hover:text-danger items-center justify-center transition shrink-0 cursor-pointer">
+        <i class="fa-solid fa-arrow-right-from-bracket text-[13px]"></i>
+      </button>
+    </div>
+  </div>
+</div>

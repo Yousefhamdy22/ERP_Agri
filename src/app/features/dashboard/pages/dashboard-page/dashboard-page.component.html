@@ -1,0 +1,167 @@
+<div class="pt-3 sm:pt-5 pb-8 sm:pb-10 w-full min-w-0 max-w-full" dir="rtl">
+  
+  <!-- Loading state -->
+  <div *ngIf="loading" class="p-10 sm:p-16 text-center text-muted bg-white border border-line rounded-[13px] shadow-sm my-6 w-full">
+    <i class="fa-solid fa-spinner fa-spin text-[32px] block mb-3 text-primary"></i>
+    <span class="text-[14px]">جاري تحميل بيانات لوحة العمليات...</span>
+  </div>
+
+  <div *ngIf="!loading" class="w-full min-w-0">
+    <!-- Header Welcome Banner -->
+    <div class="bg-gradient-to-l from-primary to-[#2a4e9b] text-white rounded-[13px] p-4 sm:p-[22px] mb-[20px] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 w-full min-w-0">
+      <div>
+        <h1 class="text-[20px] font-bold flex items-center gap-[9px]">
+          <i class="fa-solid fa-gauge-high"></i>
+          لوحة العمليات والتحليلات
+        </h1>
+        <p class="text-[13px] text-white/80 mt-1">مرحباً بك في نظام الفواتير والمخازن. إليك ملخص الأداء المالي والمخزني الحالي.</p>
+      </div>
+      <div class="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-lg text-[13px] font-semibold self-start md:self-auto">
+        <i class="fa-regular fa-calendar-check"></i>
+        <span>أداء اليوم</span>
+      </div>
+    </div>
+
+    <!-- Financial KPIs section -->
+    <h2 class="text-[15px] font-bold text-ink mb-[12px] flex items-center gap-2">
+      <i class="fa-solid fa-chart-pie text-primary text-[14px]"></i>
+      الأداء المالي والمبيعات
+    </h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[14px] mb-[24px]">
+      <div *ngFor="let k of kpis" class="bg-white border border-line rounded-[13px] p-[17px] flex items-center gap-[13px] shadow-sm hover:shadow-md transition duration-200">
+        <div class="w-[48px] h-[48px] rounded-[12px] flex items-center justify-center text-[19px] shrink-0"
+             [ngClass]="k.iconBg + ' ' + k.iconColor">
+          <i [class]="k.icon"></i>
+        </div>
+        <div>
+          <div class="text-[12px] text-muted">{{ k.label }}</div>
+          <div class="text-[20px] font-extrabold my-[2px] tracking-tight text-ink" [ngClass]="k.color">{{ k.value }}</div>
+          <div class="text-[11px] text-muted font-medium">{{ k.sub }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory KPIs Section -->
+    <h2 class="text-[15px] font-bold text-ink mb-[12px] flex items-center gap-2">
+      <i class="fa-solid fa-warehouse text-primary text-[14px]"></i>
+      حالة المخزون والمستودعات
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-[14px] mb-[24px]">
+      <div *ngFor="let k of inventoryKpis" class="bg-white border border-line rounded-[13px] p-[17px] flex items-center gap-[13px] shadow-sm hover:shadow-md transition duration-200">
+        <div class="w-[48px] h-[48px] rounded-[12px] flex items-center justify-center text-[19px] shrink-0"
+             [ngClass]="k.iconBg + ' ' + k.iconColor">
+          <i [class]="k.icon"></i>
+        </div>
+        <div>
+          <div class="text-[12px] text-muted">{{ k.label }}</div>
+          <div class="text-[20px] font-extrabold my-[2px] tracking-tight text-ink">{{ k.value }}</div>
+          <div class="text-[11px] text-muted font-medium">{{ k.sub }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content layout -->
+    <div class="flex flex-col lg:flex-row gap-4 items-stretch min-w-0 w-full">
+      
+      <!-- Right Side: Recent Invoices Table (Expanded to full picture) -->
+      <div class="flex-1 bg-white border border-line rounded-[13px] p-3 sm:p-[18px] shadow-sm flex flex-col min-w-0 w-full overflow-hidden">
+        <div class="flex justify-between items-center mb-[14px]">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-file-invoice text-primary text-[14px]"></i>
+            <span class="text-[14px] font-bold text-ink">أحدث فواتير المبيعات</span>
+          </div>
+          <a routerLink="/invoices/sales/manage" class="text-[12.5px] text-primary-text cursor-pointer font-bold hover:underline">
+            عرض الكل <i class="fa-solid fa-arrow-left text-[10px] mr-1"></i>
+          </a>
+        </div>
+        
+        <div class="overflow-x-auto flex-1 w-full min-w-0">
+          <table class="w-full text-right border-collapse text-[13px] min-w-[500px]">
+            <thead>
+              <tr class="bg-primary-soft/40 text-muted border-b border-[#eef0fb]">
+                <th class="py-2.5 px-3 font-semibold w-[120px]">رقم الفاتورة</th>
+                <th class="py-2.5 px-3 font-semibold">العميل</th>
+                <th class="py-2.5 px-3 font-semibold text-center w-[110px]">التاريخ</th>
+                <th class="py-2.5 px-3 font-semibold text-center w-[120px]">القيمة الإجمالية</th>
+                <th class="py-2.5 px-3 font-semibold text-center w-[90px]">الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of recent" class="border-b border-[#f1f2f4] hover:bg-[#fafbfc] transition">
+                <td class="py-3 px-3 font-mono font-bold text-primary-text">{{ r.no }}</td>
+                <td class="py-3 px-3 font-semibold text-ink">{{ r.customer }}</td>
+                <td class="py-3 px-3 text-center text-muted font-mono text-[12px]">{{ formatDate(r.date) }}</td>
+                <td class="py-3 px-3 text-center font-mono font-bold text-ink">{{ r.amount | number:'1.2-2' }} ج.م</td>
+                <td class="py-3 px-3 text-center">
+                  <span class="text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" [ngClass]="r.cls">{{ r.status }}</span>
+                </td>
+              </tr>
+              <tr *ngIf="!recent.length">
+                <td colspan="5" class="py-[40px] text-center text-muted text-[13px]">
+                  <i class="fa-solid fa-file-invoice text-[28px] opacity-30 block mb-2"></i>
+                  لا توجد فواتير مبيعات مسجلة بعد
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Left Side Stack: Low Stock Warning & Quick Actions -->
+      <div class="w-full lg:w-[320px] shrink-0 flex flex-col gap-4 min-w-0">
+        
+        <!-- Low Stock Items Warning -->
+        <div class="bg-white border border-line rounded-[13px] p-[18px] shadow-sm">
+          <div class="flex items-center justify-between mb-[14px]">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-triangle-exclamation text-danger text-[14px]"></i>
+              <span class="text-[14px] font-bold text-ink">أصناف تحت حد الطلب</span>
+            </div>
+            <a routerLink="/inventory/warehouses/products" class="text-[11px] text-primary-text font-bold hover:underline">
+              أصناف المخازن
+            </a>
+          </div>
+          
+          <div class="flex flex-col gap-2">
+            <div *ngFor="let l of lowStock" class="flex items-center justify-between p-2 rounded-lg border border-[#fdeaea] bg-[#fdfafb] hover:bg-[#fcf5f7] transition">
+              <div class="min-w-0 flex-1 pl-2">
+                <div class="text-[12.5px] font-bold text-ink truncate">{{ l.name }}</div>
+                <div class="text-[10px] text-muted font-mono mt-0.5">SKU: {{ l.sku }}</div>
+              </div>
+              <div class="text-left shrink-0">
+                <div class="text-[12.5px] font-bold text-danger">{{ l.qty | number:'1.0-2' }} متبقي</div>
+                <div class="text-[10px] text-muted mt-0.5">حد الطلب: {{ l.limit }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="!lowStock.length" class="py-8 text-center text-muted text-[12.5px]">
+            <i class="fa-solid fa-circle-check text-[26px] text-emerald-500 block mb-2 opacity-50"></i>
+            جميع مستويات المخزون كافية وآمنة
+          </div>
+        </div>
+
+        <!-- Quick Actions Panel -->
+        <div class="bg-white border border-line rounded-[13px] p-[18px] shadow-sm">
+          <div class="flex items-center gap-2 mb-[14px]">
+            <i class="fa-solid fa-bolt text-primary text-[14px]"></i>
+            <span class="text-[14px] font-bold text-ink">إجراءات واختصارات سريعة</span>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-[9px]">
+            <button *ngFor="let q of visibleQuickActions" (click)="run(q)"
+              class="flex flex-col items-center justify-center text-center gap-2 p-3 border border-[#eceef1] rounded-[11px] bg-[#fafbfc] cursor-pointer text-[12px] font-bold text-ink hover:border-primary hover:bg-white hover:text-primary transition duration-150 shadow-sm hover:shadow">
+              <span class="w-[34px] h-[34px] rounded-lg bg-primary-soft text-primary flex items-center justify-center text-[15px]">
+                <i [class]="q.icon"></i>
+              </span>
+              <span class="w-full truncate">{{ q.label }}</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>

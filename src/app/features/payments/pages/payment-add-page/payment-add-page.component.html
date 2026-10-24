@@ -1,0 +1,281 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="اضافة دفعة"
+      icon="fa-solid fa-hand-holding-dollar">
+    </app-page-header>
+
+    <div *ngIf="isAdvance" class="mb-[16px] bg-[#f4f7ff] border border-[#dbe4fb] text-[#374151] rounded-[10px] px-[16px] py-[12px] text-[12.5px] flex items-start gap-[8px]">
+      <i class="fa-solid fa-circle-info mt-[2px] text-primary"></i>
+      <div>الدفعة المقدمة لا تُربط بفاتورة — تُحفظ كرصيد على حساب {{ partyLabel }} وتُرحَّل مباشرة عند الحفظ.</div>
+    </div>
+
+    <div *ngIf="isDirectCheck" class="mb-[16px] bg-[#fff5f5] border border-[#fed7d7] text-[#c53030] rounded-[10px] px-[16px] py-[12px] text-[12.5px] flex items-start gap-[8px]">
+      <i class="fa-solid fa-triangle-exclamation mt-[2px] text-danger"></i>
+      <div>
+        <strong>تنبيه شيك بالسالب:</strong>
+        {{ isCheckIssued ? 'هذا الشيك الصادر سيُسجل بالسالب ويزيد من الدين المستحق على الطرف المختار (عميل أو مورد).' : 'هذا الشيك الوارد سيُسجل بالسالب ويزيد من الدين المستحق على الطرف المختار (عميل أو مورد).' }}
+        (يتم حفظ الشيك وترحيله مباشرة على حساب الطرف دون ربطه بفاتورة).
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-[20px]">
+
+      <!-- Form -->
+      <form [formGroup]="form" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm w-full">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-[20px] gap-y-[18px]">
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">الفرع <span class="text-danger">*</span></label>
+            <app-select
+          formControlName="branchId"
+          [options]="[{value: '', label: '— اختر الفرع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name})))"
+          placeholder="— اختر الفرع —"
+          [searchable]="true"
+          />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">نوع الدفعة <span class="text-danger">*</span></label>
+            <app-select
+          formControlName="type"
+          [options]="typeOptions.map(t => ({value: t.value, label: t.label}))"
+          (changed)="form.patchValue({partyId:''}); onPartyOrTypeChange()"
+          />
+          </div>
+
+          <div class="col-span-full group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">{{ partyLabel }} <span class="text-danger">*</span></label>
+            <app-select
+          formControlName="partyId"
+          [options]="[{value: '', label: '— اختر ' + partyLabel + ' —'}].concat(parties.map(p => ({value: p.id, label: p.name})))"
+          placeholder="— اختر {{ partyLabel }} —"
+          (changed)="onPartyOrTypeChange()"
+          />
+          </div>
+
+          <div class="group" *ngIf="!isDirectCheck">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">طريقة الدفع <span class="text-danger">*</span></label>
+            <app-select
+          formControlName="method"
+          [options]="methodOptions.map(m => ({value: m.value, label: m.label}))"
+          />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              مبلغ الدفعة <span class="text-danger">*</span>
+              <span *ngIf="!isAdvance && !isDirectCheck" class="text-[#b3b9c2] font-normal text-[11px]">(محسوب تلقائياً من التخصيصات)</span>
+              <span *ngIf="isAdvance || isDirectCheck" class="text-[#b3b9c2] font-normal text-[11px]">(أدخل المبلغ مباشرة)</span>
+            </label>
+            <input type="number" step="0.01" min="0.01" formControlName="amount"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+              [ngClass]="invalid('amount') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ الدفعة <span class="text-danger">*</span></label>
+            <input type="date" formControlName="paymentDate" [max]="today"
+              class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+              [ngClass]="invalid('paymentDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+          </div>
+
+          <!-- Check-specific fields -->
+          <div *ngIf="isDirectCheck" class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">رقم الشيك</label>
+            <input formControlName="checkNumber" placeholder="مثال: CHK-12345"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+
+          <div *ngIf="isDirectCheck" class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">تاريخ استحقاق الشيك</label>
+            <input type="date" formControlName="checkDate"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+
+          <div *ngIf="isDirectCheck" class="group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">البنك المسحوب عليه</label>
+            <input formControlName="checkBank" placeholder="مثال: بنك مصر / البنك الأهلي"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+          </div>
+
+          <div class="col-span-full group">
+            <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+              المرجع <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري — رقم شيك/حوالة)</span>
+            </label>
+            <input formControlName="reference" maxlength="255" placeholder="مثال: شيك #12345"
+              class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+            <div class="text-[10.5px] text-muted mt-[3px] text-left">{{ (form.value.reference || '').length }}/255</div>
+          </div>
+
+        </div>
+      </form>
+
+      <!-- Interactive invoices table -->
+      <div *ngIf="!isAdvance && !isDirectCheck" class="bg-white border border-line rounded-[13px] shadow-sm w-full overflow-hidden">
+        <div class="px-[20px] py-[16px] border-b border-[#f0f1f4] flex items-center justify-between flex-wrap gap-[10px]">
+          <div>
+            <div class="text-[14.5px] font-bold flex items-center gap-[8px]">
+              <i class="fa-solid fa-file-invoice text-primary"></i>
+              فواتير {{ partyLabel }}
+              <span *ngIf="selectedRows.length" class="text-[11px] font-bold bg-primary text-white px-[9px] py-[2px] rounded-full">{{ selectedRows.length }} محددة</span>
+            </div>
+            <div class="text-[12px] text-muted mt-[3px]">اختر الفواتير لتخصيص الدفعة عليها</div>
+          </div>
+          <div class="flex items-center gap-2 bg-[#fafbfc] border border-line rounded-[9px] px-3 py-[8px] min-w-[220px]" *ngIf="invoiceRows.length">
+            <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+            <input [(ngModel)]="invoiceSearch" [ngModelOptions]="{standalone:true}" placeholder="بحث برقم الفاتورة..."
+              class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+          </div>
+        </div>
+
+        <div *ngIf="isAdvance" class="p-[16px] text-[12.5px] text-muted">لا توجد فواتير لتخصيصها — الدفعة المقدمة لا تُربط بفاتورة.</div>
+
+        <ng-container *ngIf="!isAdvance">
+          <div *ngIf="loadingInvoices" class="p-14 text-center text-muted">
+            <i class="fa-solid fa-spinner fa-spin text-[24px] block mb-3"></i>
+            جارٍ تحميل الفواتير…
+          </div>
+
+          <div *ngIf="!loadingInvoices && !form.value.partyId" class="p-14 text-center text-[#b3b9c2] text-[13px]">
+            <i class="fa-solid fa-hand-pointer text-[26px] block mb-3 opacity-40"></i>
+            اختر {{ partyLabel }} أولاً لعرض فواتيره
+          </div>
+
+          <div *ngIf="!loadingInvoices && form.value.partyId && !invoiceRows.length" class="p-14 text-center text-[#b3b9c2]">
+            <i class="fa-solid fa-file-invoice text-[28px] block mb-3 opacity-40"></i>
+            <span class="text-[13px]">لا توجد فواتير مؤكدة غير مسددة لهذا {{ partyLabel }}</span>
+          </div>
+
+          <div *ngIf="!loadingInvoices && filteredRows.length" class="overflow-hidden">
+            <table class="w-full text-[13px] table-fixed border-collapse">
+              <colgroup>
+                <col style="width: 4%" />
+                <col style="width: 19%" />
+                <col style="width: 13%" />
+                <col style="width: 15%" />
+                <col style="width: 17%" />
+                <col style="width: 15%" />
+                <col style="width: 17%" />
+              </colgroup>
+              <thead>
+                <tr class="bg-[#fafbfc] text-[11.5px] text-muted border-b border-[#e3e6ea]">
+                  <th class="px-[12px] py-[11px] text-center">
+                    <input type="checkbox" [checked]="allFilteredSelected" (change)="toggleSelectAll()"
+                      class="w-[15px] h-[15px] accent-primary cursor-pointer" title="تحديد الكل" />
+                  </th>
+                  <th class="px-[10px] py-[11px] text-right font-semibold">رقم الفاتورة</th>
+                  <th class="px-[10px] py-[11px] text-center font-semibold">تاريخ الاستحقاق</th>
+                  <th class="px-[10px] py-[11px] text-center font-semibold">المتبقي</th>
+                  <th class="px-[10px] py-[11px] text-center font-semibold">المخصَّص</th>
+                  <th class="px-[10px] py-[11px] text-center font-semibold">الخصم</th>
+                  <th class="px-[10px] py-[11px] text-center font-semibold">الرصيد بعد التخصيص</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of filteredRows" class="border-t border-[#f0f1f4] hover:bg-[#fafbfc] transition"
+                  [ngClass]="row.selected ? 'bg-primary-soft/40' : ''">
+                  <td class="px-[12px] py-[10px] text-center">
+                    <input type="checkbox" [checked]="row.selected" (change)="toggleRow(row)" class="w-[15px] h-[15px] accent-primary cursor-pointer" />
+                  </td>
+                  <td class="px-[10px] py-[10px] font-mono font-bold truncate" [title]="row.invoiceNumber">
+                    <i class="fa-regular fa-file-lines text-[#c3c8d0] text-[11px] me-1"></i>{{ row.invoiceNumber }}
+                  </td>
+                  <td class="px-[10px] py-[10px] text-center whitespace-nowrap">
+                    <span class="text-[#5b626d]">{{ row.dueDate | date:'yyyy-MM-dd' }}</span>
+                    <span *ngIf="row.dueDate < today" class="block text-[10px] font-semibold text-danger mt-[2px]">
+                      <i class="fa-solid fa-triangle-exclamation"></i> متأخرة
+                    </span>
+                  </td>
+                  <td class="px-[10px] py-[10px] text-center font-mono font-semibold" [ngClass]="row.outstanding > 0 ? 'text-danger' : 'text-[#0e9f6e]'">
+                    {{ row.outstanding | number:'1.2-2' }}
+                  </td>
+                  <td class="px-[8px] py-[8px]">
+                    <input type="number" step="0.01" min="0" [max]="row.outstanding" [(ngModel)]="row.allocatedAmount"
+                      [ngModelOptions]="{standalone:true}" [disabled]="!row.selected" (ngModelChange)="onRowInputChange()"
+                      class="w-full px-[8px] py-[7px] border border-[#e3e6ea] rounded-[7px] text-[12.5px] font-mono text-center outline-none focus:border-primary disabled:bg-[#f6f7f9] disabled:text-[#c3c8d0]" />
+                  </td>
+                  <td class="px-[8px] py-[8px]">
+                    <input type="number" step="0.01" min="0" [max]="row.outstanding" [(ngModel)]="row.discountTaken"
+                      [ngModelOptions]="{standalone:true}" [disabled]="!row.selected" (ngModelChange)="onRowInputChange()"
+                      class="w-full px-[8px] py-[7px] border border-[#e3e6ea] rounded-[7px] text-[12.5px] font-mono text-center outline-none focus:border-primary disabled:bg-[#f6f7f9] disabled:text-[#c3c8d0]" />
+                  </td>
+                  <td class="px-[10px] py-[10px] text-center font-mono font-bold"
+                    [ngClass]="remainingBalance(row) < 0 ? 'text-danger' : remainingBalance(row) === 0 ? 'text-[#0e9f6e]' : 'text-[#5b626d]'">
+                    {{ remainingBalance(row) | number:'1.2-2' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+
+    <!-- Summary: advance payment (no allocation — just the amount) -->
+    <div *ngIf="isAdvance" class="rounded-[13px] p-[20px] mt-[20px] border bg-[#f4f7ff] border-[#dbe4fb]">
+      <div class="text-[13px] font-bold mb-[12px]">ملخص الدفعة المقدمة</div>
+      <div class="text-center mb-[8px]">
+        <span class="text-[11px] text-muted block mb-[3px]">المبلغ</span>
+        <span class="font-bold text-[18px] text-[#5156be]">{{ (form.value.amount | number:'1.2-2') || '0.00' }}</span>
+      </div>
+      <div class="text-[12.5px] font-semibold text-center"
+        [ngClass]="form.value.amount && form.value.amount > 0 ? 'text-[#0e9f6e]' : 'text-danger'">
+        <ng-container *ngIf="!form.value.amount || form.value.amount <= 0">أدخل مبلغ الدفعة المقدمة</ng-container>
+        <ng-container *ngIf="form.value.amount && form.value.amount > 0">✅ جاهزة للحفظ — ستُرحَّل مباشرة على حساب {{ partyLabel }}</ng-container>
+      </div>
+    </div>
+
+    <!-- Summary: direct check (no allocation — just the check amount) -->
+    <div *ngIf="isDirectCheck" class="rounded-[13px] p-[20px] mt-[20px] border bg-[#fff8f8] border-[#fed7d7]">
+      <div class="text-[13px] font-bold text-[#c53030] mb-[12px]">ملخص الشيك بالسالب</div>
+      <div class="text-center mb-[8px]">
+        <span class="text-[11px] text-muted block mb-[3px]">قيمة الشيك</span>
+        <span class="font-bold text-[18px] text-[#c53030]">{{ (form.value.amount | number:'1.2-2') || '0.00' }}</span>
+      </div>
+      <div class="text-[12.5px] font-semibold text-center"
+        [ngClass]="form.value.amount && form.value.amount > 0 ? 'text-[#0e9f6e]' : 'text-danger'">
+        <ng-container *ngIf="!form.value.amount || form.value.amount <= 0">أدخل مبلغ الشيك</ng-container>
+        <ng-container *ngIf="form.value.amount && form.value.amount > 0">✅ جاهز للحفظ — سيُسجل بالسالب ويُرحَّل مباشرة لحساب {{ partyLabel }}</ng-container>
+      </div>
+    </div>
+
+    <!-- Summary: allocated payment -->
+    <div *ngIf="!isAdvance && !isDirectCheck" class="rounded-[13px] p-[20px] mt-[20px] border"
+      [ngClass]="Math.abs(unallocatedAmount) < 0.01 && selectedRows.length ? 'bg-[#eaf7f1] border-[#d7f0e3]' : 'bg-[#fdeaea] border-[#f3d4d4]'">
+      <div class="text-[13px] font-bold mb-[12px]">ملخص الدفعة</div>
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-[12px] text-center mb-[12px]">
+        <div><span class="text-[11px] text-muted block mb-[3px]">إجمالي الفواتير المحددة</span><span class="font-semibold">{{ totalInvoiceAmountSelected | number:'1.2-2' }}</span></div>
+        <div><span class="text-[11px] text-muted block mb-[3px]">إجمالي المخصَّص</span><span class="font-semibold">{{ totalAllocated | number:'1.2-2' }}</span></div>
+        <div><span class="text-[11px] text-muted block mb-[3px]">إجمالي الخصم</span><span class="font-semibold text-[#0e9f6e]">{{ totalDiscount | number:'1.2-2' }}</span></div>
+        <div><span class="text-[11px] text-muted block mb-[3px]">إجمالي مبلغ الدفعة</span><span class="font-bold text-[15px] text-[#5156be]">{{ totalPaymentAmount | number:'1.2-2' }}</span></div>
+        <div><span class="text-[11px] text-muted block mb-[3px]">غير المخصَّص</span><span class="font-bold text-[15px]" [ngClass]="unallocatedAmount === 0 ? 'text-[#0e9f6e]' : 'text-danger'">{{ unallocatedAmount | number:'1.2-2' }}</span></div>
+      </div>
+      <div class="text-[12.5px] font-semibold text-center" [ngClass]="Math.abs(unallocatedAmount) < 0.01 && selectedRows.length ? 'text-[#0e9f6e]' : 'text-danger'">
+        <ng-container *ngIf="!selectedRows.length">اختر فاتورة واحدة على الأقل</ng-container>
+        <ng-container *ngIf="selectedRows.length && unallocatedAmount > 0.01">❌ يوجد مبلغ غير مخصَّص — خصّصه على الفواتير أو قلّل مبلغ الدفعة</ng-container>
+        <ng-container *ngIf="selectedRows.length && unallocatedAmount < -0.01">⚠️ تجاوز في التخصيص — راجع المبالغ المدخلة</ng-container>
+        <ng-container *ngIf="selectedRows.length && Math.abs(unallocatedAmount) < 0.01">✅ الدفعة مخصَّصة بالكامل — جاهزة للحفظ</ng-container>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex flex-wrap gap-[10px] mt-[20px] mb-6">
+      <app-button variant="primary" icon="fa-solid fa-floppy-disk" (click)="submit()" [disabled]="saving">
+        {{ saving ? 'جارٍ الحفظ…' : 'إنشاء الدفعة' }}
+      </app-button>
+      <app-button variant="ghost" (click)="clearForm()">مسح النموذج</app-button>
+      <app-button variant="ghost" routerLink="/payments">إلغاء</app-button>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

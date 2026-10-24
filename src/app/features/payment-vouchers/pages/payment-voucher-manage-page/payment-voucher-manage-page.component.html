@@ -1,0 +1,426 @@
+<div class="pt-5 print:hidden">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="ادارة السندات"
+      icon="fa-solid fa-file-invoice-dollar"
+      [subtitle]="'إجمالي: ' + total + ' سند'">
+    </app-page-header>
+
+    <!-- Filters -->
+    <div class="mb-[16px] bg-white border border-line rounded-[13px] p-[16px] shadow-sm">
+      <div class="flex flex-wrap gap-[10px] items-center">
+
+        <app-select
+          [(ngModel)]="type"
+          [options]="typeOptions.map(t => ({value: t.value, label: t.label}))"
+          (changed)="onFilterChange()"
+          />
+
+        <app-select
+          [(ngModel)]="status"
+          [options]="statusOptions.map(s => ({value: s.value, label: s.label}))"
+          (changed)="onFilterChange()"
+          />
+
+        <div class="flex items-center gap-[6px]">
+          <label class="text-[12px] text-muted">من التاريخ</label>
+          <input type="date" [(ngModel)]="fromDate" (ngModelChange)="onFilterChange()"
+            class="px-3 py-[9px] border border-line rounded-[9px] text-[13px] bg-white outline-none focus:border-primary" />
+        </div>
+
+        <div class="flex items-center gap-[6px]">
+          <label class="text-[12px] text-muted">إلى التاريخ</label>
+          <input type="date" [(ngModel)]="toDate" (ngModelChange)="onFilterChange()"
+            class="px-3 py-[9px] border border-line rounded-[9px] text-[13px] bg-white outline-none focus:border-primary" />
+        </div>
+
+        <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[9px] flex-1 min-w-[200px] shadow-sm">
+          <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+          <input [ngModel]="search" (ngModelChange)="onSearchChange($event)" placeholder="ابحث عن رقم السند أو اسم الطرف..."
+            class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+          <button *ngIf="search" (click)="search=''; onFilterChange()"
+            class="text-[#a3a8b2] hover:text-ink bg-transparent border-0 cursor-pointer text-[13px]">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-[6px]">
+          <app-select
+          [(ngModel)]="sortBy"
+          [options]="sortOptions.map(s => ({value: s.value, label: 'ترتيب: ' + s.label}))"
+          (changed)="onFilterChange()"
+          />
+          <button (click)="toggleSortDirection()"
+            [title]="descending ? 'تنازلي' : 'تصاعدي'"
+            class="w-[38px] h-[38px] rounded-[9px] border border-line bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition cursor-pointer">
+            <i class="fa-solid" [ngClass]="descending ? 'fa-arrow-down-wide-short' : 'fa-arrow-up-short-wide'"></i>
+          </button>
+        </div>
+
+        <button (click)="clearFilters()"
+          class="px-3 py-[9px] border border-line rounded-[9px] text-[13px] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition cursor-pointer whitespace-nowrap">
+          <i class="fa-solid fa-filter-circle-xmark text-[12px]"></i> مسح المرشحات
+        </button>
+
+        <button (click)="exportCsv()"
+          class="px-3 py-[9px] border border-[#d7f0e3] bg-[#eaf7f1] text-[#0e9f6e] rounded-[9px] text-[13px] hover:bg-[#d7f0e3] transition cursor-pointer whitespace-nowrap">
+          <i class="fa-solid fa-file-csv text-[12px]"></i> تصدير CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- Bulk actions toolbar -->
+    <div *ngIf="hasSelection" class="mb-[16px] bg-primary-soft border border-primary-border rounded-[13px] px-[16px] py-[12px] flex flex-wrap items-center justify-between gap-[10px]">
+      <span class="text-[13px] font-semibold text-primary-text">{{ selectedIds.size }} سند محدد</span>
+      <div class="flex flex-wrap gap-[8px]">
+        <button (click)="bulkApprove()" [disabled]="actionLoading || !selectedNewCount"
+          class="px-3 py-[8px] rounded-[8px] bg-primary text-white text-[12.5px] hover:bg-primary-dark transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+          <i class="fa-solid fa-check"></i> اعتماد المحدد ({{ selectedNewCount }})
+        </button>
+        <button (click)="bulkPost()" [disabled]="actionLoading || !selectedApprovedCount"
+          class="px-3 py-[8px] rounded-[8px] bg-primary text-white text-[12.5px] hover:bg-primary-dark transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+          <i class="fa-solid fa-book"></i> ترحيل المحدد ({{ selectedApprovedCount }})
+        </button>
+        <button (click)="selectedIds.clear()"
+          class="px-3 py-[8px] rounded-[8px] border border-line bg-white text-[#5b626d] text-[12.5px] hover:bg-[#f3f4f7] transition cursor-pointer whitespace-nowrap">
+          إلغاء التحديد
+        </button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm relative">
+      <div *ngIf="refreshing && !loading" class="absolute top-0 inset-x-0 h-[2px] bg-primary/25 overflow-hidden z-10">
+        <div class="h-full w-1/3 bg-primary animate-pulse"></div>
+      </div>
+
+      <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[12.5px] table-fixed min-w-[950px] transition-opacity"
+        [ngClass]="refreshing && !loading ? 'opacity-50 pointer-events-none' : ''">
+        <colgroup>
+          <col class="w-[4%]" />
+          <col class="w-[3%]" />
+          <col class="w-[12%]" />
+          <col class="w-[12%]" />
+          <col class="w-[16%]" />
+          <col class="w-[10%]" />
+          <col class="w-[9%]" />
+          <col class="w-[12%]" />
+          <col class="w-[8%]" />
+          <col class="w-[14%]" />
+        </colgroup>
+        <thead>
+          <tr class="bg-primary text-white text-[11.5px]">
+            <th class="px-[8px] py-[11px] text-center">
+              <input type="checkbox" [checked]="isAllSelected" (change)="toggleSelectAll()"
+                class="w-[14px] h-[14px] accent-primary cursor-pointer" />
+            </th>
+            <th class="px-[8px] py-[11px] text-right font-semibold">#</th>
+            <th class="px-2 py-[11px] text-right font-semibold">رقم السند</th>
+            <th class="px-2 py-[11px] text-right font-semibold">النوع</th>
+            <th class="px-2 py-[11px] text-right font-semibold">الطرف</th>
+            <th class="px-2 py-[11px] text-center font-semibold">المبلغ</th>
+            <th class="px-2 py-[11px] text-right font-semibold">التاريخ</th>
+            <th class="px-2 py-[11px] text-right font-semibold">الفاتورة المرتبطة</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الحالة</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let v of vouchers; let i = index"
+            class="border-t border-[#f1f2f4] hover:bg-[#fafbfc] transition odd:bg-[#fcfcfd]">
+            <td class="px-[8px] py-[9px] text-center">
+              <input type="checkbox" [checked]="selectedIds.has(v.id)" (change)="toggleSelect(v.id)"
+                class="w-[14px] h-[14px] accent-primary cursor-pointer" />
+            </td>
+            <td class="px-[8px] py-[9px] text-muted text-[11.5px]">{{ (page - 1) * pageSize + i + 1 }}</td>
+            <td class="px-2 py-[9px] font-mono text-[11.5px] font-bold truncate">
+              <button (click)="openDetail(v.id)" [title]="v.voucherNumber"
+                class="text-primary-text hover:underline bg-transparent border-0 cursor-pointer p-0 font-mono font-bold truncate block w-full text-right">
+                {{ v.voucherNumber }}
+              </button>
+            </td>
+            <td class="px-2 py-[9px] text-[#5b626d] truncate" [title]="typeLabel(v.type)">
+              <i [class]="typeIcon(v.type)" class="text-[11px] me-1 text-[#a3a8b2]"></i>{{ typeLabel(v.type) }}
+            </td>
+            <td class="px-2 py-[9px] font-semibold truncate" [title]="v.partyName">{{ v.partyName }}</td>
+            <td class="px-2 py-[9px] text-center font-semibold truncate">{{ v.amount | number:'1.2-2' }}</td>
+            <td class="px-2 py-[9px] text-[#5b626d] whitespace-nowrap">{{ formatDate(v.voucherDate) }}</td>
+            <td class="px-2 py-[9px] text-[#5b626d] truncate">{{ v.linkedInvoiceNumber || '—' }}</td>
+            <td class="px-2 py-[9px] text-center">
+              <span class="px-[6px] py-[2px] rounded-full text-[10.5px] font-semibold whitespace-nowrap" [ngClass]="statusBadgeClass(v.status)">
+                {{ statusLabel(v.status) }}
+              </span>
+            </td>
+            <td class="px-[6px] py-[9px]">
+              <div class="flex flex-wrap items-center justify-center gap-[4px]">
+                <button (click)="openDetail(v.id)"
+                  class="px-[8px] py-[5px] rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[10.5px] cursor-pointer">
+                  عرض
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div *ngIf="loading" class="p-12 text-center text-muted">
+        <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+        جارٍ تحميل السندات…
+      </div>
+      <div *ngIf="!loading && loadError" class="p-12 text-center text-danger">
+        <i class="fa-solid fa-triangle-exclamation text-[26px] block mb-3"></i>
+        تعذّر تحميل السندات.
+        <div class="mt-3">
+          <button (click)="load()" class="text-primary-text text-[13px] font-semibold hover:underline bg-transparent border-0 cursor-pointer">
+            <i class="fa-solid fa-rotate-right text-[11px]"></i> إعادة المحاولة
+          </button>
+        </div>
+      </div>
+      <div *ngIf="!loading && !loadError && vouchers.length === 0" class="p-12 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-file-invoice-dollar text-[30px] block mb-3 opacity-40"></i>
+        لا توجد سندات
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="!loading && !loadError && vouchers.length > 0" class="flex flex-wrap items-center justify-between gap-[10px] px-[16px] py-[12px] border-t border-[#f1f2f4] text-[12.5px] text-muted">
+        <span>صفحة {{ page }} من {{ totalPages }}</span>
+        <div class="flex gap-[8px]">
+          <button (click)="prevPage()" [disabled]="!hasPreviousPage || refreshing"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-right"></i>
+          </button>
+          <button (click)="nextPage()" [disabled]="!hasNextPage || refreshing"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-left"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>
+
+<!-- Detail Modal — non-dismissible on background click, only via the X button -->
+<div *ngIf="selectedVoucher || detailLoading"
+  class="print-root fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 print:static print:bg-white print:p-0 print:block">
+  <div class="print-surface bg-white rounded-[16px] border border-line w-full max-w-[720px] shadow-[0_20px_60px_rgba(0,0,0,.18)] max-h-[92vh] overflow-y-auto print:max-w-none print:max-h-none print:shadow-none print:border-0 print:rounded-none">
+
+    <div *ngIf="detailLoading" class="p-14 text-center text-muted print:hidden">
+      <i class="fa-solid fa-spinner fa-spin text-[28px] block mb-3"></i>
+      جارٍ تحميل تفاصيل السند…
+    </div>
+
+    <ng-container *ngIf="selectedVoucher as v">
+
+      <app-invoice-print-header
+        [documentTitle]="typeLabel(v.type)"
+        [printedAt]="today">
+      </app-invoice-print-header>
+
+      <div class="flex items-center justify-between px-[22px] py-[16px] border-b border-[#f0f1f4] print:px-[6mm] print:py-0 print:mb-[4mm] print:border-b-0">
+        <div class="flex items-center gap-[12px]">
+          <i [class]="typeIcon(v.type)" class="text-primary text-[18px] print:hidden"></i>
+          <div class="text-[18px] font-bold print:text-[15px]">{{ v.voucherNumber }}</div>
+          <span class="px-2 py-[3px] rounded-full text-[11px] font-semibold print:border print:border-[#333] print:bg-white print:text-black" [ngClass]="statusBadgeClass(v.status)">
+            {{ statusLabel(v.status) }}
+          </span>
+        </div>
+        <button (click)="closeDetail()"
+          class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px] print:hidden">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-[22px] print:p-0 print:px-[6mm]">
+
+        <!-- Status timeline — مؤشّر تفاعلي لواجهة الشاشة فقط، لا معنى له على ورقة مطبوعة
+             (النص/الشارة أعلاه يكفيان لتوضيح الحالة على الورق) -->
+        <div *ngIf="v.status !== 'Cancelled'" class="mb-[24px] flex items-start print:hidden">
+          <ng-container *ngFor="let step of timelineSteps; let i = index; let last = last">
+            <div class="flex flex-col items-center shrink-0">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold border-2"
+                [ngClass]="isTimelineStepDone(v.status, i) ? 'bg-primary border-primary text-white' : 'bg-white border-[#e3e6ea] text-[#b3b9c2]'">
+                <i *ngIf="isTimelineStepDone(v.status, i)" class="fa-solid fa-check text-[11px]"></i>
+                <span *ngIf="!isTimelineStepDone(v.status, i)">{{ i + 1 }}</span>
+              </div>
+              <span class="text-[10.5px] mt-[4px] whitespace-nowrap" [ngClass]="isTimelineStepDone(v.status, i) ? 'text-ink font-semibold' : 'text-muted'">{{ statusLabel(step) }}</span>
+              <span class="text-[9.5px] text-muted whitespace-nowrap" *ngIf="step === 'New' && v.createdAt">{{ formatDate(v.createdAt) }}</span>
+              <span class="text-[9.5px] text-muted whitespace-nowrap" *ngIf="step === 'Approved' && v.approvedAt">{{ formatDate(v.approvedAt) }}</span>
+              <span class="text-[9.5px] text-muted whitespace-nowrap" *ngIf="step === 'Posted' && v.postedAt">{{ formatDate(v.postedAt) }}</span>
+            </div>
+            <div *ngIf="!last" class="flex-1 h-[2px] mx-[8px] mt-[15px]" [ngClass]="isTimelineStepDone(v.status, i + 1) ? 'bg-primary' : 'bg-[#e3e6ea]'"></div>
+          </ng-container>
+        </div>
+        <div *ngIf="v.status === 'Cancelled'" class="mb-[24px] text-danger font-semibold text-[13px] bg-[#fdeaea] border border-[#f3d4d4] rounded-[9px] py-[10px] px-[14px] text-center print:bg-white print:border-[#333] print:text-black print:mb-[5mm]">
+          <div><i class="fa-solid fa-ban"></i> هذا السند ملغى</div>
+          <div *ngIf="v.cancelledBy || v.cancelledAt" class="text-[11.5px] font-normal mt-[4px]">
+            <ng-container *ngIf="v.cancelledBy">بواسطة: {{ v.cancelledBy }}</ng-container>
+            <ng-container *ngIf="v.cancelledAt"> — {{ formatDate(v.cancelledAt) }}</ng-container>
+          </div>
+          <div *ngIf="v.cancelledReason" class="text-[11.5px] font-normal mt-[2px]" [title]="v.cancelledReason">السبب: {{ v.cancelledReason }}</div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-[14px] mb-[20px] print:gap-[6px] print:mb-[5mm] print:text-[11.5px]">
+          <div><span class="text-[12px] text-muted block mb-[2px]">النوع</span><span class="font-semibold">{{ typeLabel(v.type) }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">الطرف</span><span class="font-semibold">{{ v.partyName }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">تاريخ السند</span><span class="font-semibold">{{ formatDate(v.voucherDate) }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">المبلغ</span><span class="font-bold text-[16px] text-[#5156be] print:text-black">{{ v.amount | number:'1.2-2' }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">حساب النقدية/البنك</span><span class="font-semibold font-mono">{{ v.cashAccountCode }}</span></div>
+          <div *ngIf="v.creditAccountCode"><span class="text-[12px] text-muted block mb-[2px]">حساب العملاء (دائن)</span><span class="font-semibold font-mono">{{ v.creditAccountCode }}</span></div>
+          <div *ngIf="v.chargeAccountCode"><span class="text-[12px] text-muted block mb-[2px]">حساب الموردين (مدين)</span><span class="font-semibold font-mono">{{ v.chargeAccountCode }}</span></div>
+          <div *ngIf="v.linkedInvoiceNumber"><span class="text-[12px] text-muted block mb-[2px]">الفاتورة المرتبطة</span><span class="font-semibold">{{ v.linkedInvoiceNumber }}</span></div>
+        </div>
+
+        <div class="bg-[#f6f7f9] rounded-[9px] p-[16px] mb-[20px] print:bg-white print:border print:border-[#e3e6ea] print:rounded-none print:p-[10px] print:mb-[5mm]">
+          <span class="text-[12px] text-muted block mb-[4px]">البيان</span>
+          <span class="text-[13.5px]">{{ v.description }}</span>
+        </div>
+
+        <!-- Journal entry -->
+        <div *ngIf="v.journalEntryId" class="bg-[#eaf7f1] border border-[#d7f0e3] rounded-[9px] p-[16px] mb-[20px] text-[13px] print:bg-white print:border-[#333] print:text-black print:rounded-none print:p-[10px] print:mb-[5mm]">
+          <i class="fa-solid fa-book text-[#0e9f6e] print:hidden"></i>
+          تم إنشاء القيد المحاسبي —
+          <a *ngIf="v.journalEntryNumber" routerLink="/manual-journal" class="font-mono font-bold text-primary-text hover:underline print:text-black">{{ v.journalEntryNumber }}</a>
+          <span *ngIf="!v.journalEntryNumber" class="font-mono">{{ v.journalEntryId }}</span>
+        </div>
+
+        <!-- Audit trail -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-[10px] text-[12px] text-muted mb-[20px] print:mb-[5mm]">
+          <div *ngIf="v.createdBy">أنشئ بواسطة: <span class="font-semibold text-ink">{{ v.createdBy }}</span> — {{ formatDate(v.createdAt) }}</div>
+          <div *ngIf="v.approvedBy">اعتُمد بواسطة: <span class="font-semibold text-ink">{{ v.approvedBy }}</span> — {{ v.approvedAt ? formatDate(v.approvedAt) : '' }}</div>
+          <div *ngIf="v.postedBy">رُحِّل بواسطة: <span class="font-semibold text-ink">{{ v.postedBy }}</span> — {{ v.postedAt ? formatDate(v.postedAt) : '' }}</div>
+        </div>
+
+        <!-- Print-only signatures -->
+        <div class="print-avoid-break hidden print:flex justify-between mt-[14mm] px-[6mm] pb-[8mm]">
+          <div class="text-center w-[45%]">
+            <div class="border-t border-black pt-[4px] text-[11px]">توقيع {{ isReceiptType(v.type) ? 'الدافع' : 'المستلم' }}</div>
+          </div>
+          <div class="text-center w-[45%]">
+            <div class="border-t border-black pt-[4px] text-[11px]">توقيع المُحرِّر</div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-wrap gap-[10px] pt-[14px] border-t border-[#f0f1f4] print:hidden">
+          <button *ngIf="v.status === 'New'" (click)="openApproveDialog()" [disabled]="actionLoading"
+            class="px-4 py-[10px] rounded-[9px] bg-primary text-white text-[13.5px] hover:bg-primary-dark transition cursor-pointer disabled:opacity-50">
+            <i class="fa-solid fa-check"></i> اعتماد
+          </button>
+          <button *ngIf="v.status === 'Approved'" (click)="openPostDialog()" [disabled]="actionLoading"
+            class="px-4 py-[10px] rounded-[9px] bg-[#0e9f6e] text-white text-[13.5px] hover:opacity-90 transition cursor-pointer disabled:opacity-50">
+            <i class="fa-solid fa-book"></i> ترحيل
+          </button>
+          <button *ngIf="v.status === 'New' || v.status === 'Approved'" (click)="cancelVoucher()" [disabled]="actionLoading"
+            class="px-4 py-[10px] rounded-[9px] border border-[#f3d4d4] bg-white text-danger text-[13.5px] hover:bg-[#fdeaea] transition cursor-pointer disabled:opacity-50">
+            <i class="fa-solid fa-ban"></i> إلغاء السند
+          </button>
+          <button (click)="printVoucher()"
+            class="px-4 py-[10px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer">
+            <i class="fa-solid fa-print"></i> طباعة
+          </button>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
+<!-- Approve confirm dialog -->
+<div *ngIf="showApproveDialog && selectedVoucher as v"
+  class="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4"
+  (click)="closeApproveDialog()">
+  <div class="bg-white rounded-[14px] border border-line w-full max-w-[440px] shadow-[0_20px_60px_rgba(0,0,0,.18)] p-[20px]"
+    (click)="$event.stopPropagation()">
+    <div class="text-[14px] font-bold mb-[8px] flex items-center gap-[8px]">
+      <i class="fa-solid fa-check text-primary"></i> اعتماد سند {{ typeLabel(v.type) }}
+    </div>
+    <div class="text-[12.5px] text-muted mb-[14px] leading-relaxed">
+      هل أنت متأكد من اعتماد السند رقم <span class="font-bold text-ink font-mono">{{ v.voucherNumber }}</span>؟
+      <br />
+      <ng-container *ngIf="isReceiptType(v.type)">
+        سيتم اعتماد تحصيل مبلغ <span class="font-bold text-ink">{{ v.amount | number:'1.2-2' }}</span> من <span class="font-bold text-ink">{{ v.partyName }}</span>.
+      </ng-container>
+      <ng-container *ngIf="!isReceiptType(v.type)">
+        سيتم اعتماد دفع مبلغ <span class="font-bold text-ink">{{ v.amount | number:'1.2-2' }}</span> لـ <span class="font-bold text-ink">{{ v.partyName }}</span>.
+      </ng-container>
+    </div>
+
+    <div class="bg-[#f9fafb] border border-[#e3e6ea] rounded-[10px] p-[12px] mb-[16px] text-[12.5px] space-y-[4px]">
+      <div class="flex justify-between"><span class="text-muted">الطرف</span><span class="font-semibold">{{ v.partyName }}</span></div>
+      <div class="flex justify-between"><span class="text-muted">المبلغ</span><span class="font-semibold font-mono">{{ v.amount | number:'1.2-2' }}</span></div>
+      <div class="flex justify-between"><span class="text-muted">طريقة الدفع</span><span class="font-semibold">{{ typeLabel(v.type) }}</span></div>
+      <div class="flex justify-between"><span class="text-muted">التاريخ</span><span class="font-semibold">{{ formatDate(v.voucherDate) }}</span></div>
+    </div>
+
+    <div class="flex gap-[8px]">
+      <button (click)="confirmApprove()" [disabled]="approving"
+        class="flex-1 px-4 py-[9px] rounded-[9px] bg-primary text-white text-[13.5px] hover:bg-primary-dark transition cursor-pointer disabled:opacity-50">
+        {{ approving ? 'جارٍ الاعتماد…' : 'اعتماد' }}
+      </button>
+      <button (click)="closeApproveDialog()" [disabled]="approving"
+        class="px-4 py-[9px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Post confirm dialog -->
+<div *ngIf="showPostDialog && selectedVoucher as v"
+  class="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4"
+  (click)="closePostDialog()">
+  <div class="bg-white rounded-[14px] border border-line w-full max-w-[440px] shadow-[0_20px_60px_rgba(0,0,0,.18)] p-[20px]"
+    (click)="$event.stopPropagation()">
+    <div class="text-[14px] font-bold mb-[8px] flex items-center gap-[8px]">
+      <i class="fa-solid fa-book text-[#0e9f6e]"></i> ترحيل سند {{ typeLabel(v.type) }}
+    </div>
+
+    <div class="bg-[#f9fafb] border border-[#e3e6ea] rounded-[10px] p-[12px] mb-[14px] text-[12.5px] space-y-[4px]">
+      <div class="flex justify-between"><span class="text-muted">السند</span><span class="font-semibold font-mono">{{ v.voucherNumber }}</span></div>
+      <div class="flex justify-between"><span class="text-muted">الطرف</span><span class="font-semibold">{{ v.partyName }}</span></div>
+      <div class="flex justify-between"><span class="text-muted">المبلغ</span><span class="font-semibold font-mono">{{ v.amount | number:'1.2-2' }}</span></div>
+      <div class="flex justify-between">
+        <span class="text-muted">القيد المحاسبي</span>
+        <span class="font-semibold" *ngIf="isReceiptType(v.type)">مدين الصندوق / دائن العملاء</span>
+        <span class="font-semibold" *ngIf="!isReceiptType(v.type)">مدين الموردين / دائن الصندوق</span>
+      </div>
+    </div>
+
+    <div class="mb-[14px] bg-[#fdf6e3] border border-[#f0dca0] text-[#8a6d1a] rounded-[9px] px-[12px] py-[9px] text-[11.5px] flex items-start gap-[7px]">
+      <i class="fa-solid fa-triangle-exclamation mt-[1px]"></i>
+      سيتم إنشاء قيد محاسبي وتحديث كل أرصدة الحسابات. لا يمكن التراجع عن هذا الإجراء.
+    </div>
+
+    <div class="group mb-[16px]">
+      <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">الفترة المالية <span class="text-danger">*</span></label>
+      <app-select
+          [(ngModel)]="postFiscalPeriodId"
+          [options]="[{value: '', label: '— اختر الفترة المالية —'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode + ' — ' + (p.status === 'Open' ? 'مفتوحة' : 'مغلقة')})))"
+          placeholder="— اختر الفترة المالية —"
+          [ngModelOptions]="{standalone:true}"
+          />
+    </div>
+
+    <div class="flex gap-[8px]">
+      <button (click)="confirmPost()" [disabled]="posting || !postFiscalPeriodId"
+        class="flex-1 px-4 py-[9px] rounded-[9px] bg-[#0e9f6e] text-white text-[13.5px] hover:opacity-90 transition cursor-pointer disabled:opacity-50">
+        {{ posting ? 'جارٍ الترحيل…' : 'ترحيل' }}
+      </button>
+      <button (click)="closePostDialog()" [disabled]="posting"
+        class="px-4 py-[9px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>

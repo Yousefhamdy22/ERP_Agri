@@ -1,0 +1,270 @@
+<div *ngIf="detailLoading" class="print-indicator">جاري تجهيز الطباعة...</div>
+<div class="pt-5 print:hidden">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="ادارة فواتير مرتجع التوريد"
+      icon="fa-solid fa-rotate-left"
+      [subtitle]="'إجمالي: ' + total + ' فاتورة'">
+    </app-page-header>
+
+    <!-- Filters -->
+    <div class="mb-[16px] bg-white border border-line rounded-[13px] p-[16px] shadow-sm">
+      <div class="flex flex-wrap gap-[10px] items-center">
+
+        <app-select
+          [(ngModel)]="status"
+          [options]="[{value: '', label: 'كل الحالات'}, {value: 'Draft', label: 'مسودة'}, {value: 'Confirmed', label: 'مؤكدة'}, {value: 'Paid', label: 'مدفوعة'}, {value: 'Cancelled', label: 'ملغاة'}]"
+          (changed)="onFilterChange()"
+          />
+
+        <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[9px] flex-1 min-w-[200px] shadow-sm">
+          <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+          <input [(ngModel)]="search" (ngModelChange)="onFilterChange()" placeholder="ابحث عن رقم الفاتورة أو اسم المورد..."
+            class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+          <button *ngIf="search" (click)="search=''; onFilterChange()"
+            class="text-[#a3a8b2] hover:text-ink bg-transparent border-0 cursor-pointer text-[13px]">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-[6px]">
+          <app-select
+          [(ngModel)]="sortBy"
+          [options]="[{value: 'invoiceDate', label: 'ترتيب: التاريخ'}, {value: 'invoiceNumber', label: 'ترتيب: رقم الفاتورة'}, {value: 'grandTotal', label: 'ترتيب: الإجمالي'}, {value: 'supplierName', label: 'ترتيب: المورد'}]"
+          />
+          <button (click)="toggleSortDirection()"
+            [title]="descending ? 'تنازلي' : 'تصاعدي'"
+            class="w-[38px] h-[38px] rounded-[9px] border border-line bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition cursor-pointer">
+            <i class="fa-solid" [ngClass]="descending ? 'fa-arrow-down-wide-short' : 'fa-arrow-up-short-wide'"></i>
+          </button>
+        </div>
+
+        <button (click)="clearFilters()"
+          class="px-3 py-[9px] border border-line rounded-[9px] text-[13px] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition cursor-pointer whitespace-nowrap">
+          <i class="fa-solid fa-filter-circle-xmark text-[12px]"></i> مسح المرشحات
+        </button>
+
+        <button (click)="exportCsv()"
+          class="px-3 py-[9px] border border-[#d7f0e3] bg-[#eaf7f1] text-[#0e9f6e] rounded-[9px] text-[13px] hover:bg-[#d7f0e3] transition cursor-pointer whitespace-nowrap">
+          <i class="fa-solid fa-file-csv text-[12px]"></i> تصدير CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[12.5px] table-fixed min-w-[850px]">
+        <colgroup>
+          <col class="w-[4%]" />
+          <col class="w-[13%]" />
+          <col class="w-[16%]" />
+          <col class="w-[11%]" />
+          <col class="w-[11%]" />
+          <col class="w-[9%]" />
+          <col class="w-[10%]" />
+          <col class="w-[9%]" />
+          <col class="w-[17%]" />
+        </colgroup>
+        <thead>
+          <tr class="bg-primary text-white text-[11.5px]">
+            <th class="px-[8px] py-[11px] text-right font-semibold">#</th>
+            <th class="px-2 py-[11px] text-right font-semibold">رقم الفاتورة</th>
+            <th class="px-2 py-[11px] text-right font-semibold">المورد</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الإجمالي</th>
+            <th class="px-2 py-[11px] text-center font-semibold">المتبقي</th>
+            <th class="px-2 py-[11px] text-center font-semibold">المدفوع</th>
+            <th class="px-2 py-[11px] text-right font-semibold">التاريخ</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الحالة</th>
+            <th class="px-2 py-[11px] text-center font-semibold">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of pagedReturns; let i = index"
+            class="border-t border-[#f1f2f4] hover:bg-[#fafbfc] transition odd:bg-[#fcfcfd]">
+            <td class="px-[8px] py-[9px] text-muted text-[11.5px]">{{ (page - 1) * pageSize + i + 1 }}</td>
+            <td class="px-2 py-[9px] font-mono text-[11.5px] font-bold truncate">
+              <button (click)="openDetail(r.id)" [title]="r.invoiceNumber"
+                class="text-primary-text hover:underline bg-transparent border-0 cursor-pointer p-0 font-mono font-bold truncate block w-full text-right">
+                {{ r.invoiceNumber }}
+              </button>
+            </td>
+            <td class="px-2 py-[9px] font-semibold truncate" [title]="r.supplierName">{{ r.supplierName }}</td>
+            <td class="px-2 py-[9px] text-center font-semibold truncate">{{ r.grandTotal | number:'1.2-2' }}</td>
+            <td class="px-2 py-[9px] text-center text-danger font-semibold truncate">{{ r.amountOutstanding | number:'1.2-2' }}</td>
+            <td class="px-2 py-[9px] text-center text-[#0e9f6e] truncate">{{ r.amountPaid | number:'1.2-2' }}</td>
+            <td class="px-2 py-[9px] text-[#5b626d] whitespace-nowrap">{{ formatDate(r.invoiceDate) }}</td>
+            <td class="px-2 py-[9px] text-center">
+              <span class="px-[6px] py-[2px] rounded-full text-[10.5px] font-semibold whitespace-nowrap" [ngClass]="statusBadgeClass(r.status)">
+                {{ statusLabel(r.status) }}
+              </span>
+            </td>
+            <td class="px-[6px] py-[9px]">
+              <div class="flex items-center justify-center gap-[4px]">
+                <button *ngIf="r.status === 'Draft' || r.status === 'Pending'"
+                  (click)="confirmReturn(r.id)" [disabled]="confirming"
+                  title="تأكيد وترحيل المرتجع"
+                  class="px-[8px] py-[5px] rounded-[7px] bg-[#0e9f6e] text-white hover:bg-[#0b7f58] transition text-[10.5px] cursor-pointer font-semibold flex items-center gap-1 whitespace-nowrap">
+                  <i class="fa-solid fa-circle-check"></i> تأكيد
+                </button>
+                <button (click)="openDetail(r.id)"
+                  class="px-[8px] py-[5px] rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[10.5px] cursor-pointer whitespace-nowrap">
+                  عرض
+                </button>
+                <button (click)="printRowReturn(r.id)"
+                  class="px-[8px] py-[5px] rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[10.5px] cursor-pointer whitespace-nowrap"
+                  title="طباعة مرتجع مشتريات">
+                  <i class="fa-solid fa-print text-[9px]"></i> مرتجع
+                </button>
+                <button (click)="printRowDeliveryNote(r.id)"
+                  class="px-[8px] py-[5px] rounded-[7px] border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] transition text-[10.5px] cursor-pointer whitespace-nowrap"
+                  title="طباعة اذن صرف">
+                  <i class="fa-solid fa-file-export text-[9px]"></i> اذن صرف
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div *ngIf="loading" class="p-12 text-center text-muted">
+        <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+        جارٍ تحميل فواتير مرتجع التوريد…
+      </div>
+      <div *ngIf="!loading && loadError" class="p-12 text-center text-danger">
+        <i class="fa-solid fa-triangle-exclamation text-[26px] block mb-3"></i>
+        تعذّر تحميل فواتير مرتجع التوريد.
+        <div class="mt-3">
+          <button (click)="load()" class="text-primary-text text-[13px] font-semibold hover:underline bg-transparent border-0 cursor-pointer">
+            <i class="fa-solid fa-rotate-right text-[11px]"></i> إعادة المحاولة
+          </button>
+        </div>
+      </div>
+      <div *ngIf="!loading && !loadError && pagedReturns.length === 0" class="p-12 text-center text-[#b3b9c2]">
+        <i class="fa-solid fa-rotate-left text-[30px] block mb-3 opacity-40"></i>
+        لا توجد فواتير مرتجع
+        <div class="mt-3">
+          <a routerLink="/purchase-returns/add" class="text-primary-text text-[13px] font-semibold hover:underline">
+            <i class="fa-solid fa-plus text-[11px]"></i> اضافة أول مرتجع
+          </a>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="!loading && !loadError && pagedReturns.length > 0" class="flex flex-wrap items-center justify-between gap-[10px] px-[16px] py-[12px] border-t border-[#f1f2f4] text-[12.5px] text-muted">
+        <span>صفحة {{ page }} من {{ totalPages }} — {{ total }} فاتورة</span>
+        <div class="flex gap-[8px]">
+          <button (click)="prevPage()" [disabled]="!hasPreviousPage"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-right"></i>
+          </button>
+          <button (click)="nextPage()" [disabled]="!hasNextPage"
+            class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <i class="fa-solid fa-angle-left"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div *ngIf="selectedReturn || detailLoading"
+  class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 print:static print:bg-white print:p-0 print:block">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[560px] shadow-[0_20px_60px_rgba(0,0,0,.18)] max-h-[92vh] overflow-y-auto print:max-w-none print:max-h-none print:shadow-none print:border-0 print:rounded-none">
+
+    <div *ngIf="detailLoading" class="p-14 text-center text-muted print:hidden">
+      <i class="fa-solid fa-spinner fa-spin text-[28px] block mb-3"></i>
+      جارٍ تحميل تفاصيل المرتجع…
+    </div>
+
+    <ng-container *ngIf="selectedReturn as r">
+      <div class="flex items-center justify-between px-[22px] py-[16px] border-b border-[#f0f1f4]">
+        <div class="flex items-center gap-[12px]">
+          <div class="text-[18px] font-bold">{{ r.returnEntryNumber }}</div>
+          <span class="px-2 py-[3px] rounded-full text-[11px] font-semibold" [ngClass]="returnStatusBadgeClass(r.returnStatus)">
+            {{ returnStatusLabel(r.returnStatus) }}
+          </span>
+        </div>
+        <button (click)="closeDetail()"
+          class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px] print:hidden">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-[22px]">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-[14px] mb-[20px]">
+          <div><span class="text-[12px] text-muted block mb-[2px]">الفاتورة الأصلية</span><span class="font-semibold">{{ r.originalEntryNumber }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">تاريخ الفاتورة الأصلية</span><span class="font-semibold">{{ formatDate(r.originalDate) }}</span></div>
+          <div><span class="text-[12px] text-muted block mb-[2px]">تاريخ المرتجع</span><span class="font-semibold">{{ formatDate(r.returnDate) }}</span></div>
+          <div *ngIf="printMode !== 'deliveryNote'"><span class="text-[12px] text-muted block mb-[2px]">مبلغ المرتجع</span><span class="font-bold text-[16px] text-danger">{{ r.returnAmount | number:'1.2-2' }}</span></div>
+        </div>
+
+        <!-- Financial summary -->
+        <div *ngIf="printMode !== 'deliveryNote'" class="grid grid-cols-2 sm:grid-cols-4 gap-[12px] bg-[#eef0fb] rounded-[9px] p-[16px] mb-[14px] text-center">
+          <div><span class="text-[11.5px] text-muted block mb-[3px]">المبلغ الأصلي</span><span class="font-semibold">{{ r.originalAmount | number:'1.2-2' }}</span></div>
+          <div><span class="text-[11.5px] text-muted block mb-[3px]">مبلغ المرتجع</span><span class="font-semibold">{{ r.returnAmount | number:'1.2-2' }}</span></div>
+          <div><span class="text-[11.5px] text-muted block mb-[3px]">نسبة المرتجع</span><span class="font-semibold">{{ r.returnPercentage | number:'1.1-1' }}%</span></div>
+          <div><span class="text-[11.5px] text-muted block mb-[3px]">المتبقي</span><span class="font-bold text-[16px] text-[#5156be]">{{ r.remainingAmount | number:'1.2-2' }}</span></div>
+        </div>
+
+        <div class="text-[12px] text-muted mb-[20px]">حالة الفاتورة الأصلية: <span class="font-semibold text-ink">{{ r.originalStatus }}</span></div>
+        <div class="text-[12px] text-muted mb-[20px]" *ngIf="r.returnReason">سبب المرتجع: <span class="font-semibold text-danger">{{ r.returnReason }}</span></div>
+
+        <!-- Return Lines table -->
+        <div *ngIf="r.lines && r.lines.length" class="mb-[20px] overflow-hidden border border-line rounded-[9px]">
+          <table class="w-full text-right text-[12.5px] border-collapse">
+            <thead>
+              <tr class="bg-gray-50 border-b border-line text-muted font-semibold text-[11.5px]">
+                <th class="p-[8px] text-right">الصنف</th>
+                <th class="p-[8px] text-center">الكمية المسترجعة</th>
+                <th *ngIf="printMode !== 'deliveryNote'" class="p-[8px] text-center">سعر الوحدة</th>
+                <th *ngIf="printMode !== 'deliveryNote'" class="p-[8px] text-left">الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of r.lines" class="border-b border-[#f1f2f4] hover:bg-gray-50/50">
+                <td class="p-[8px] font-semibold">
+                  {{ item.productName }}
+                  <span class="text-xs text-muted block font-normal">({{ item.productSku }})</span>
+                </td>
+                <td class="p-[8px] text-center font-mono font-bold text-blue-600">{{ item.quantity }}</td>
+                <td *ngIf="printMode !== 'deliveryNote'" class="p-[8px] text-center font-mono">{{ item.unitPrice | number:'1.2-2' }}</td>
+                <td *ngIf="printMode !== 'deliveryNote'" class="p-[8px] text-left font-mono font-semibold">{{ item.lineTotal | number:'1.2-2' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-wrap gap-[10px] pt-[14px] border-t border-[#f0f1f4] print:hidden">
+          <button *ngIf="r.returnStatus === 'Draft' || r.returnStatus === 'Pending'" (click)="confirmReturn(r.returnId)" [disabled]="confirming"
+            class="px-4 py-[10px] rounded-[9px] bg-[#0e9f6e] text-white text-[13.5px] hover:bg-[#0b7f58] transition cursor-pointer font-semibold flex items-center gap-2">
+            <i class="fa-solid fa-circle-check"></i>
+            {{ confirming ? 'جارٍ التأكيد…' : 'تأكيد المرتجع والترحيل' }}
+          </button>
+          <button (click)="printReturn()"
+            class="px-4 py-[10px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer">
+            <i class="fa-solid fa-print"></i> طباعة مرتجع مشتريات
+          </button>
+          <button (click)="printDeliveryNote()"
+            class="px-4 py-[10px] rounded-[9px] border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] text-[13.5px] hover:bg-[#dbeafe] transition cursor-pointer">
+            <i class="fa-solid fa-file-export"></i> طباعة اذن صرف
+          </button>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>

@@ -1,0 +1,168 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      [title]="isEdit ? 'تعديل مورد' : 'اضافة مورد'"
+      icon="fa-solid fa-truck-ramp-box">
+    </app-page-header>
+
+    <div *ngIf="loading" class="p-14 text-center text-muted bg-white border border-line rounded-[13px]">
+      <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+      جارٍ تحميل بيانات المورد…
+    </div>
+
+    <form *ngIf="!loading" [formGroup]="form" (ngSubmit)="submit()" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm">
+
+      <div *ngIf="isEdit" class="mb-[18px] px-3 py-2 rounded-[9px] bg-[#eef0fb] text-[#5156be] text-[12px] flex items-center gap-[6px]">
+        <i class="fa-solid fa-circle-info"></i>
+        يمكن تعديل الاسم والهاتف والبريد الإلكتروني والعنوان فقط. باقي البيانات تُحدَّد عند إنشاء المورد ولا يمكن تعديلها حالياً.
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+      <div class="group">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          الاسم بالعربية <span class="text-danger">*</span>
+        </label>
+        <input formControlName="nameAr" autofocus placeholder="مثال: شركة النور للتوريدات"
+          class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+          [ngClass]="invalid('nameAr') ? 'border-danger' : 'border-[#e3e6ea]'" />
+        <div *ngIf="invalid('nameAr')" class="text-[11px] text-danger mt-[4px]">الاسم بالعربية مطلوب (حرفان على الأقل)</div>
+      </div>
+
+<div class="group" *ngIf="!isEdit">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+          الدولة <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <app-select
+          formControlName="countryCode"
+          [options]="[{value: '', label: '— اختر الدولة —'}].concat(countries.map(c => ({value: c.dialCode, label: c.label + ' (' + c.dialCode + ')'})))"
+          placeholder="— اختر الدولة —"
+          />
+      </div>
+
+      <div class="group">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          الهاتف <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <input formControlName="phone" placeholder="01xxxxxxxxx"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+      </div>
+
+      <div class="group" *ngIf="!isEdit">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          هاتف إضافي <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <input formControlName="secondaryPhone" placeholder="01xxxxxxxxx"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+      </div>
+
+      <div class="group">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          البريد الإلكتروني <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <input formControlName="email" placeholder="example@mail.com"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+      </div>
+
+      <div class="group" *ngIf="!isEdit">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+          تصنيف المورد <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <app-select
+          formControlName="category"
+          [options]="categories.map(c => ({value: c.value, label: c.label}))"
+          />
+      </div>
+
+      <div class="group" *ngIf="!isEdit">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          المدينة <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <input formControlName="city" placeholder="مثال: القاهرة"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+      </div>
+
+      <div class="group" *ngIf="!isEdit">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          اسم المسؤول <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <input formControlName="responsibleName" placeholder="اسم المسؤول عن التواصل"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+      </div>
+
+      <div class="group" *ngIf="!isEdit">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          منصب المسؤول <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <input formControlName="responsiblePosition" placeholder="مثال: مدير المبيعات"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+      </div>
+
+      <div class="col-span-2 group">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          العنوان <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <input formControlName="address" placeholder="العنوان التفصيلي"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+      </div>
+
+      <div class="col-span-2 group" *ngIf="!isEdit">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          الموقع الجغرافي <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري — أدخل الإحداثيات أو رابط خرائط جوجل)</span>
+        </label>
+        <input formControlName="location" placeholder="مثال: 30.0444, 31.2357 أو https://maps.google.com/?q=30.0444,31.2357"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+        <div *ngIf="parsedLocation" class="text-[11px] text-[#0e9f6e] mt-[4px] flex items-center gap-[5px]">
+          <i class="fa-solid fa-location-dot text-[10px]"></i>
+          تم تحديد الموقع: {{ parsedLocation.latitude }}, {{ parsedLocation.longitude }}
+        </div>
+        <div *ngIf="locationHasValueButUnparsed" class="text-[11px] text-danger mt-[4px]">
+          تعذّر التعرف على إحداثيات صحيحة من هذا النص
+        </div>
+      </div>
+
+      <div class="group" *ngIf="!isEdit">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          الرقم الضريبي <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <input formControlName="taxNumber"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+      </div>
+
+      <div class="group" *ngIf="!isEdit">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          السجل التجاري <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <input formControlName="commercialRegister"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary transition" />
+      </div>
+
+      <div class="col-span-2 group" *ngIf="!isEdit">
+        <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px] group-focus-within:text-primary transition-colors duration-150">
+          ملاحظات <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+        </label>
+        <textarea formControlName="notes" rows="2" placeholder="ملاحظات إضافية…"
+          class="w-full px-[11px] py-[9px] border border-[#e3e6ea] rounded-[9px] text-[14px] outline-none focus:border-primary resize-none transition"></textarea>
+      </div>
+
+    </div>
+
+    <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+      <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">
+        {{ saving ? 'جارٍ الحفظ…' : (isEdit ? 'حفظ التعديلات' : 'حفظ المورد') }}
+      </app-button>
+      <app-button variant="ghost" routerLink="/parties/suppliers/manage">إلغاء</app-button>
+    </div>
+  </form>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

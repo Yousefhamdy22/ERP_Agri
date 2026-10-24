@@ -1,0 +1,98 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="دليل الحسابات"
+      icon="fa-solid fa-sitemap"
+      [subtitle]="'إجمالي: ' + totalCount + ' حساب'">
+    </app-page-header>
+
+    <!-- Loading skeleton -->
+    <div *ngIf="loading" class="bg-white border border-line rounded-[13px] p-14 text-center text-muted">
+      <i class="fa-solid fa-spinner text-[26px] block mb-3"></i>
+      جارٍ تحميل دليل الحسابات…
+    </div>
+
+    <div *ngIf="!loading && loadError" class="bg-white border border-line rounded-[13px] p-14 text-center text-danger">
+      <i class="fa-solid fa-triangle-exclamation text-[26px] block mb-3"></i>
+      تعذّر تحميل دليل الحسابات.
+      <div class="mt-3">
+        <button (click)="load()" class="text-primary-text text-[13px] font-semibold hover:underline bg-transparent border-0 cursor-pointer">
+          <i class="fa-solid fa-rotate-right text-[11px]"></i> إعادة المحاولة
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty state — seed the standard chart of accounts -->
+    <div *ngIf="!loading && !loadError && totalCount === 0" class="bg-white border border-line rounded-[13px] p-14 text-center text-[#b3b9c2]">
+      <i class="fa-solid fa-sitemap text-[30px] block mb-3 opacity-40"></i>
+      لا توجد حسابات مسجلة بعد
+      <div class="mt-4">
+        <button (click)="seedChart()" [disabled]="seeding"
+          class="px-4 py-[10px] rounded-[9px] bg-primary text-white text-[13.5px] hover:bg-primary-dark cursor-pointer disabled:opacity-50">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> {{ seeding ? 'جارٍ التهيئة…' : 'تهيئة دليل الحسابات القياسي' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Search & Filter Toolbar -->
+    <div *ngIf="!loading && !loadError && totalCount > 0" class="mb-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div class="relative w-full sm:w-80">
+        <i class="fa-solid fa-magnifying-glass absolute right-3 top-1/2 -translate-y-1/2 text-muted text-[13px]"></i>
+        <input [(ngModel)]="searchTerm" placeholder="بحث بالكود أو اسم الحساب..."
+          class="w-full pr-9 pl-3 py-2 border border-line rounded-[9px] text-[13.5px] bg-white outline-none focus:border-primary" />
+        <button *ngIf="searchTerm" (click)="searchTerm = ''"
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-muted hover:text-danger text-[12px] bg-transparent border-0 cursor-pointer">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="text-[12.5px] text-muted flex items-center gap-2">
+        <span *ngIf="searchTerm" class="bg-primary-soft text-primary px-2 py-0.5 rounded-md font-medium">
+          نتائج البحث: {{ filteredAccounts.length }} قسم
+        </span>
+      </div>
+    </div>
+
+    <!-- Tree -->
+    <app-account-tree *ngIf="!loading && !loadError && totalCount > 0" [accounts]="filteredAccounts"
+      (addChild)="onAddChild($event)" (moveAccount)="openMove($event)"
+      (toggleActive)="onToggleActive($event)" (deleteAccount)="onDelete($event)"
+      (viewLedger)="onViewLedger($event)">
+    </app-account-tree>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>
+
+<!-- Move account modal -->
+<div *ngIf="movingAccount"
+  class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+  (click)="closeMove()">
+  <div class="bg-white rounded-[14px] border border-line w-full max-w-[420px] shadow-[0_20px_60px_rgba(0,0,0,.18)] p-[20px]"
+    (click)="$event.stopPropagation()">
+    <div class="text-[14px] font-bold mb-[4px]">نقل الحساب</div>
+    <div class="text-[12.5px] text-muted mb-[14px]">{{ movingAccount.accountCode }} — {{ movingAccount.nameAr }}</div>
+
+    <label class="block text-[11.5px] text-muted mb-[4px]">الحساب الرئيسي الجديد <span class="text-danger">*</span></label>
+    <app-tree-select [(ngModel)]="moveTargetId" [options]="moveTargetOptions" placeholder="— اختر الحساب الرئيسي —"></app-tree-select>
+
+    <div class="flex gap-[8px] mt-[16px]">
+      <button (click)="confirmMove()"
+        class="flex-1 px-4 py-[9px] rounded-[9px] bg-primary text-white text-[13.5px] hover:bg-primary-dark transition cursor-pointer">
+        تأكيد النقل
+      </button>
+      <button (click)="closeMove()"
+        class="px-4 py-[9px] rounded-[9px] border border-line bg-white text-[#4b5563] text-[13.5px] hover:bg-[#f3f4f7] transition cursor-pointer">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>

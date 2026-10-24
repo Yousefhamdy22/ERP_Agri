@@ -1,0 +1,329 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="اضافة فاتورة مرتجع توريد"
+      icon="fa-solid fa-rotate-left">
+    </app-page-header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm">
+
+      <!-- Mode Selector Tabs -->
+      <div class="mb-[20px] pb-[16px] border-b border-[#f0f1f4]">
+        <label class="block text-[12.5px] font-bold text-[#374151] mb-[8px]">طريقة إضافة المرتجع:</label>
+        <div class="inline-flex rounded-lg border border-[#e3e6ea] p-1 bg-gray-50/80 gap-1">
+          <button type="button" (click)="setReturnMode('invoice')"
+            class="px-4 py-2 text-xs font-semibold rounded-md transition flex items-center gap-2"
+            [ngClass]="returnMode === 'invoice' ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 bg-transparent'">
+            <i class="fa-solid fa-file-invoice"></i>
+            مرتجع بناءً على فاتورة أصلية
+          </button>
+          <button type="button" (click)="setReturnMode('direct')"
+            class="px-4 py-2 text-xs font-semibold rounded-md transition flex items-center gap-2"
+            [ngClass]="returnMode === 'direct' ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 bg-transparent'">
+            <i class="fa-solid fa-boxes-stacked"></i>
+            مرتجع حُر / مباشر بدون فاتورة
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-[20px] gap-y-[18px]">
+
+        <!-- Mode 1: Original Invoice Selection -->
+        <div *ngIf="returnMode === 'invoice'" class="col-span-1 md:col-span-2 group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الفاتورة الأصلية <span class="text-danger">*</span>
+          </label>
+          <app-select
+          formControlName="originalInvoiceId"
+          [options]="invoiceOptions"
+          placeholder="— اختر الفاتورة —"
+          />
+          <div *ngIf="invalid('originalInvoiceId')" class="text-[11px] text-danger mt-[4px]">الفاتورة الأصلية مطلوبة</div>
+          <div *ngIf="!invoices.length" class="text-[11px] text-muted mt-[4px]">لا توجد فواتير توريد مؤكدة بعد</div>
+        </div>
+
+        <!-- Mode 2: Direct Supplier & Warehouse Selection -->
+        <div *ngIf="returnMode === 'direct'" class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            المورد <span class="text-danger">*</span>
+          </label>
+          <app-searchable-combo-box storageKey="suppliers"
+            formControlName="supplierId"
+            [items]="supplierComboItems"
+            [invalid]="invalid('supplierId')"
+            placeholder="ابحث بالاسم أو الهاتف أو الكود…"
+            emptyMessage="لا توجد موردين">
+          </app-searchable-combo-box>
+          <div *ngIf="invalid('supplierId')" class="text-[11px] text-danger mt-[4px]">المورد مطلوب في الإرجاع المباشر</div>
+        </div>
+
+        <div *ngIf="returnMode === 'direct'" class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            المستودع الرئيسي <span class="text-danger">*</span>
+          </label>
+          <app-select
+          formControlName="warehouseId"
+          [options]="warehouseOptions"
+          placeholder="— اختر المستودع —"
+          [searchable]="true"
+          />
+          <div *ngIf="invalid('warehouseId')" class="text-[11px] text-danger mt-[4px]">المستودع مطلوب</div>
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الفترة المالية <span class="text-danger">*</span>
+          </label>
+          <app-select
+          formControlName="fiscalPeriodId"
+          [options]="[{value: '', label: '— اختر الفترة المالية —'}].concat(fiscalPeriods.map(p => ({value: p.id, label: p.periodCode})))"
+          placeholder="— اختر الفترة المالية —"
+          />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            الفرع <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+          </label>
+          <app-select
+          formControlName="branchId"
+          [options]="[{value: '', label: '— كل الفروع —'}].concat(branches.map(b => ({value: b.id, label: b.nameAr || b.name || ''})))"
+          placeholder="— كل الفروع —"
+          [searchable]="true"
+          />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            تاريخ المرتجع <span class="text-danger">*</span>
+          </label>
+          <input type="date" formControlName="returnDate"
+            class="w-full px-[11px] py-[9px] border rounded-[9px] text-[14px] outline-none focus:border-primary transition"
+            [ngClass]="invalid('returnDate') ? 'border-danger' : 'border-[#e3e6ea]'" />
+        </div>
+
+        <div class="group">
+          <label class="block text-[12.5px] font-semibold text-[#374151] mb-[5px]">
+            سبب المرتجع <span class="text-danger">*</span>
+          </label>
+          <app-select
+          formControlName="returnReason"
+          [options]="returnReasons.map(r => ({value: r, label: r}))"
+          />
+        </div>
+
+      </div>
+
+      <!-- Live Product Search & Batch Selection Bar -->
+      <div *ngIf="returnMode === 'direct' || invoiceDetail" class="mt-[24px] pt-[20px] border-t border-[#f0f1f4]">
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 class="text-[14px] font-bold text-[#374151]">أصناف الفاتورة والكميات المسترجعة</h3>
+            <p class="text-xs text-muted">يمكنك البحث عن صنف بالاسم أو SKU، أو إضافة أصناف متعددة دفعة واحدة</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Batch Picker Modal Trigger -->
+            <button type="button" (click)="openBatchPicker()"
+              class="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-boxes-stacked"></i>
+              اختيار أصناف متعددة
+            </button>
+
+            <!-- Quick Controls -->
+            <button type="button" (click)="selectAllLines()" *ngIf="returnLines.length"
+              class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition flex items-center gap-1">
+              <i class="fa-solid fa-check-double text-green-600"></i> تحديد الكل
+            </button>
+
+            <button type="button" (click)="clearAllLines()" *ngIf="returnLines.length"
+              class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition flex items-center gap-1">
+              <i class="fa-solid fa-eraser text-orange-600"></i> تفريغ المحدد
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Search Bar -->
+        <div class="relative mb-4">
+          <div class="relative flex items-center">
+            <i class="fa-solid fa-magnifying-glass absolute right-3 text-gray-400 text-sm"></i>
+            <input type="text" [(ngModel)]="productSearchQuery" [ngModelOptions]="{standalone: true}"
+              (focus)="showSearchResults = true"
+              placeholder="🔍 ابحث بالاسم، SKU أو الباركود لإضافة صنف مباشرة..."
+              class="w-full pr-9 pl-4 py-2 border border-[#e3e6ea] rounded-lg text-xs outline-none focus:border-primary transition" />
+          </div>
+
+          <!-- Dropdown Results -->
+          <div *ngIf="showSearchResults && filteredCatalogSearchResults.length"
+            class="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-[#e3e6ea] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            <div *ngFor="let item of filteredCatalogSearchResults" (click)="selectSearchResult(item)"
+              class="p-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-100 flex items-center justify-between transition">
+              <div>
+                <span class="font-semibold text-xs text-gray-800 block">{{ item.productName || item.name }}</span>
+                <span class="text-[11px] text-gray-500">SKU: {{ item.productSku || item.sku || 'N/A' }}</span>
+              </div>
+              <div class="text-left">
+                <span class="text-xs font-mono font-bold text-primary block">{{ (item.unitPrice || item.costPrice || item.currentPrice || 0) | number:'1.2-2' }}</span>
+                <span class="text-[10px] text-green-600 font-medium">+ إدراج للصنف</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table View Controls -->
+        <div *ngIf="returnLines.length" class="flex items-center justify-between text-xs text-gray-500 mb-2 px-1">
+          <span>إجمالي الأصناف بالقائمة: <strong class="text-gray-800">{{ returnLines.length }}</strong></span>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="showOnlySelectedLines" [ngModelOptions]="{standalone: true}" class="rounded text-primary focus:ring-0">
+            <span>عرض الأصناف المختارة فقط (الكمية > 0)</span>
+          </label>
+        </div>
+
+        <!-- Return Line Items Table -->
+        <div class="overflow-x-auto border border-line rounded-[9px]">
+          <table class="w-full text-right text-[13px] border-collapse">
+            <thead>
+              <tr class="bg-gray-50 border-b border-line text-muted">
+                <th class="p-[10px]">الصنف</th>
+                <th class="p-[10px]">المخزن</th>
+                <th class="p-[10px] text-center" *ngIf="returnMode === 'invoice'">الكمية الأصلية</th>
+                <th class="p-[10px] text-center" *ngIf="returnMode === 'invoice'">المتبقية للإرجاع</th>
+                <th class="p-[10px] text-center">السعر</th>
+                <th class="p-[10px] text-center">الخصم %</th>
+                <th class="p-[10px] text-center">الضريبة %</th>
+                <th class="p-[10px] text-center w-[120px]">كمية المرتجع</th>
+                <th class="p-[10px] text-left">إجمالي المرتجع</th>
+                <th class="p-[10px] text-center w-[50px]" *ngIf="returnMode === 'direct'">إزالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let line of displayedReturnLines" class="border-b border-[#f0f1f4] hover:bg-gray-50/50">
+                <td class="p-[10px] font-semibold">
+                  {{ line.productName }}
+                  <span class="text-xs text-muted font-normal block">({{ line.productSku }})</span>
+                </td>
+                <td class="p-[10px] text-muted">{{ line.warehouseName }}</td>
+                <td class="p-[10px] text-center font-mono" *ngIf="returnMode === 'invoice'">{{ line.originalQty }}</td>
+                <td class="p-[10px] text-center font-mono text-blue-600 font-semibold" *ngIf="returnMode === 'invoice'">{{ line.remainingQty }}</td>
+                <td class="p-[10px] text-center font-mono">
+                  <input *ngIf="returnMode === 'direct'" type="number" min="0" [(ngModel)]="line.unitPrice" [ngModelOptions]="{standalone: true}"
+                    class="w-[80px] px-1 py-0.5 border border-[#e3e6ea] rounded text-center text-xs font-mono" />
+                  <span *ngIf="returnMode === 'invoice'">{{ line.unitPrice | number:'1.2-4' }}</span>
+                </td>
+                <td class="p-[10px] text-center font-mono">
+                  <input *ngIf="returnMode === 'direct'" type="number" min="0" max="100" [(ngModel)]="line.discountPct" [ngModelOptions]="{standalone: true}"
+                    class="w-[60px] px-1 py-0.5 border border-[#e3e6ea] rounded text-center text-xs font-mono" />
+                  <span *ngIf="returnMode === 'invoice'">{{ line.discountPct }}%</span>
+                </td>
+                <td class="p-[10px] text-center font-mono">
+                  <input *ngIf="returnMode === 'direct'" type="number" min="0" max="100" [(ngModel)]="line.taxPct" [ngModelOptions]="{standalone: true}"
+                    class="w-[60px] px-1 py-0.5 border border-[#e3e6ea] rounded text-center text-xs font-mono" />
+                  <span *ngIf="returnMode === 'invoice'">{{ line.taxPct }}%</span>
+                </td>
+                <td class="p-[10px] text-center">
+                  <input type="number" min="0" [max]="returnMode === 'invoice' ? line.remainingQty : 99999" [value]="line.returnQty" (input)="onQtyChanged(line, $event)"
+                    class="w-[90px] px-2 py-1 border rounded outline-none focus:border-primary text-center font-mono font-bold"
+                    [ngClass]="line.returnQty > 0 ? 'border-primary bg-blue-50/30' : 'border-[#e3e6ea]'" />
+                </td>
+                <td class="p-[10px] text-left font-mono font-semibold">
+                  {{ (line.returnQty * line.unitPrice * (1 - line.discountPct/100) * (1 + line.taxPct/100)) | number:'1.2-2' }}
+                </td>
+                <td class="p-[10px] text-center" *ngIf="returnMode === 'direct'">
+                  <button type="button" (click)="removeLine(line)" class="text-red-500 hover:text-red-700 text-xs">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="!displayedReturnLines.length">
+                <td [attr.colspan]="returnMode === 'invoice' ? 9 : 8" class="p-8 text-center text-muted text-xs">
+                  لا توجد أصناف مضافة بعد. يمكنك اختيار الفاتورة الأصلية أو اختيار أصناف من شريط البحث أوه من زر "اختيار أصناف متعددة".
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div *ngIf="returnLines.length" class="grid grid-cols-2 md:grid-cols-4 gap-[12px] bg-[#eef0fb] rounded-[9px] p-[16px] mt-[20px] text-center">
+        <div><span class="text-[11.5px] text-muted block mb-[3px]">إجمالي المرتجع (قبل الضريبة)</span><span class="font-semibold">{{ returnSubtotal | number:'1.2-2' }}</span></div>
+        <div><span class="text-[11.5px] text-muted block mb-[3px]">إجمالي الخصم المسترجع</span><span class="font-semibold text-danger">{{ returnDiscountAmount | number:'1.2-2' }}</span></div>
+        <div><span class="text-[11.5px] text-muted block mb-[3px]">إجمالي الضريبة المسترجعة</span><span class="font-semibold text-green-600">{{ returnTaxAmount | number:'1.2-2' }}</span></div>
+        <div><span class="text-[11.5px] text-muted block mb-[3px]">صافي قيمة فاتورة المرتجع</span><span class="font-bold text-[18px] text-[#5156be]">{{ returnGrandTotal | number:'1.2-2' }}</span></div>
+      </div>
+
+      <div class="flex flex-wrap gap-[10px] mt-[24px] pt-[18px] border-t border-[#f0f1f4]">
+        <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">
+          {{ saving ? 'جارٍ الحفظ…' : 'حفظ المرتجع' }}
+        </app-button>
+        <app-button variant="ghost" routerLink="/purchase-returns/manage">إلغاء</app-button>
+      </div>
+    </form>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>
+
+<!-- Multi-Product Batch Picker Modal -->
+<div *ngIf="showBatchPicker" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
+    <div class="p-4 bg-gray-50 border-b flex items-center justify-between">
+      <h3 class="font-bold text-sm text-gray-800 flex items-center gap-2">
+        <i class="fa-solid fa-boxes-stacked text-primary"></i>
+        اختيار أصناف متعددة للإرجاع
+      </h3>
+      <button (click)="closeBatchPicker()" class="text-gray-400 hover:text-gray-600">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+
+    <div class="p-4 border-b">
+      <input type="text" [(ngModel)]="batchSearchQuery" [ngModelOptions]="{standalone: true}"
+        placeholder="ابحث في الأصناف..." class="w-full px-3 py-2 border rounded-lg text-xs outline-none focus:border-primary" />
+    </div>
+
+    <div class="p-4 overflow-y-auto flex-1 space-y-2">
+      <div *ngFor="let p of filteredBatchProducts"
+        class="p-3 border rounded-lg flex items-center justify-between transition hover:border-primary"
+        [ngClass]="isBatchSelected(p) ? 'border-primary bg-blue-50/40' : 'border-gray-200'">
+        <div class="flex items-center gap-3">
+          <input type="checkbox" [checked]="isBatchSelected(p)" (change)="toggleBatchSelection(p)" class="rounded text-primary focus:ring-0 w-4 h-4 cursor-pointer">
+          <div>
+            <span class="font-bold text-xs text-gray-800 block">{{ p.productName || p.name }}</span>
+            <span class="text-[11px] text-gray-500">SKU: {{ p.productSku || p.sku || 'N/A' }}</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-mono font-bold text-gray-700">{{ (p.unitPrice || p.costPrice || p.currentPrice || 0) | number:'1.2-2' }}</span>
+          <div *ngIf="isBatchSelected(p)" class="flex items-center border rounded bg-white overflow-hidden">
+            <button type="button" (click)="updateBatchQty(p, -1)" class="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-xs font-bold">-</button>
+            <span class="px-2 text-xs font-mono font-bold">{{ batchSelectedMap[p.productId || p.id]?.qty }}</span>
+            <button type="button" (click)="updateBatchQty(p, 1)" class="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-xs font-bold">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="!filteredBatchProducts.length" class="text-center py-8 text-xs text-gray-500">
+        لا توجد أصناف مطابقة للبحث.
+      </div>
+    </div>
+
+    <div class="p-4 bg-gray-50 border-t flex items-center justify-between">
+      <span class="text-xs text-gray-600 font-medium">الأصناف المحددة: <strong class="text-primary">{{ selectedBatchCount }}</strong></span>
+      <div class="flex gap-2">
+        <button (click)="closeBatchPicker()" class="px-4 py-2 border rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100">إلغاء</button>
+        <button (click)="confirmBatchSelection()" class="px-4 py-2 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/90">إضافة المحدد للقائمة</button>
+      </div>
+    </div>
+  </div>
+</div>

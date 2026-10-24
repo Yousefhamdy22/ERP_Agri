@@ -1,0 +1,122 @@
+<div class="filter-panel" *ngIf="filters.length > 0">
+  <div class="filter-grid">
+    <ng-container *ngFor="let filter of filters">
+
+      <!-- Fiscal Period -->
+      <div class="filter-item" *ngIf="filter.type === 'fiscalPeriod'">
+        <label>{{ filter.labelAr }}</label>
+        <app-select
+          [(ngModel)]="values[filter.key]"
+          [options]="periodSelectOptions"
+          (changed)="onFilterChange()"
+          [disabled]="periodsLoading"
+          />
+      </div>
+
+      <!-- Date Range -->
+      <div class="filter-item" *ngIf="filter.type === 'dateRange'">
+        <label>{{ filter.labelAr }}</label>
+        <input
+          type="date"
+          [(ngModel)]="values[filter.key]"
+          (ngModelChange)="onFilterChange()"
+        />
+      </div>
+
+      <!-- Select / Dropdown (static options) -->
+      <div class="filter-item" *ngIf="filter.type === 'select'">
+        <label>{{ filter.labelAr }}</label>
+        <app-select
+          [(ngModel)]="values[filter.key]"
+          [options]="(filter.options || []).map(opt => ({value: opt.value, label: opt.labelAr}))"
+          (changed)="onFilterChange()"
+          />
+      </div>
+
+      <!-- Number -->
+      <div class="filter-item" *ngIf="filter.type === 'number'">
+        <label>{{ filter.labelAr }}</label>
+        <input
+          type="number"
+          [(ngModel)]="values[filter.key]"
+          (ngModelChange)="onFilterChange()"
+          min="1"
+        />
+      </div>
+
+      <!-- Boolean / Checkbox -->
+      <div class="filter-item filter-item--checkbox" *ngIf="filter.type === 'boolean'">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            [(ngModel)]="values[filter.key]"
+            (ngModelChange)="onFilterChange()"
+          />
+          <span>{{ filter.labelAr }}</span>
+        </label>
+      </div>
+
+      <!-- Text / Search -->
+      <div class="filter-item" *ngIf="filter.type === 'text'">
+        <label>{{ filter.labelAr }}</label>
+        <input
+          type="text"
+          [(ngModel)]="values[filter.key]"
+          (ngModelChange)="onFilterChange()"
+          [placeholder]="filter.labelAr + '...'"
+        />
+      </div>
+
+      <!-- Lookup Dropdowns: Branch / Warehouse / Category / Party / Customer / Supplier / Account / Product -->
+      <div
+        class="filter-item"
+        *ngIf="
+          filter.type === 'branch' ||
+          filter.type === 'warehouse' ||
+          filter.type === 'category' ||
+          filter.type === 'party' ||
+          filter.type === 'customer' ||
+          filter.type === 'supplier' ||
+          filter.type === 'account' ||
+          filter.type === 'product'
+        "
+      >
+        <label>
+          {{ filter.labelAr }}
+          <span *ngIf="filter.required" class="required-mark">*</span>
+        </label>
+        <app-select
+          [(ngModel)]="values[filter.key]"
+          [options]="getLookupOptions(filter.type).map(opt => ({value: opt.id, label: opt.label}))"
+          (changed)="onFilterChange()"
+          [disabled]="isLookupLoading(filter.type)"
+          />
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- Actions -->
+  <div class="filter-actions">
+    <button
+      type="button"
+      class="btn-primary"
+      (click)="onSubmit()"
+      [disabled]="!isValid"
+    >
+      <i class="fa-solid fa-magnifying-glass"></i>
+      {{ submitLabel }}
+    </button>
+
+    <button
+      *ngIf="showPdfPreview"
+      type="button"
+      class="btn-preview-pdf"
+      (click)="onPreview()"
+      [disabled]="!isValid || pdfPreviewLoading"
+      title="معاينة التقرير كـ PDF قبل التنزيل"
+    >
+      <i class="fa-solid" [ngClass]="pdfPreviewLoading ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i>
+      <span>{{ pdfPreviewLoading ? 'جاري تجهيز PDF...' : 'معاينة PDF' }}</span>
+    </button>
+  </div>
+</div>

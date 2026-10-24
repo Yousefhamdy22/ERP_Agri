@@ -1,0 +1,398 @@
+<div class="pt-5" dir="rtl">
+  <div class="flex items-baseline justify-between mb-[18px]">
+    <div>
+      <div class="text-[19px] font-bold flex items-center gap-[9px]">
+        <i class="fa-solid fa-warehouse text-primary"></i>
+        أصناف المستودعات
+      </div>
+      <div class="text-[12.5px] text-muted mt-1">عرض كميات الأصناف المتاحة وسجل حركاتها</div>
+    </div>
+  </div>
+
+  <div class="bg-white border border-line rounded-[13px] p-[18px] shadow-sm mb-[16px]">
+    <!-- Filters -->
+    <div class="mb-[16px] flex flex-wrap gap-[10px] items-center">
+      <app-select
+          [(ngModel)]="warehouseId"
+          [options]="[{value: '', label: '— اختر المخزن —'}].concat(warehouses.map(w => ({value: w.warehouseId, label: w.nameAr || w.name || ''})))"
+          placeholder="— اختر المخزن —"
+          (changed)="onWarehouseChange()"
+          [searchable]="true"
+          />
+
+      <!-- Tab 1 Filters -->
+      <ng-container *ngIf="warehouseId && activeTab === 'products'">
+        <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[10px] w-full sm:w-72 shadow-sm">
+          <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+          <input [ngModel]="search" (ngModelChange)="onSearchChange($event)"
+            placeholder="بحث بالاسم أو SKU…"
+            class="border-0 outline-none bg-transparent text-[13px] w-full text-ink disabled:cursor-not-allowed" />
+        </div>
+
+        <button (click)="exportExcel()" [disabled]="!warehouseId || exportingExcel"
+          class="flex items-center gap-[6px] px-[12px] py-[9px] rounded-[9px] border border-[#e3e6ea] bg-white text-[#4b5563] text-[12.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid" [ngClass]="exportingExcel ? 'fa-spinner fa-spin' : 'fa-file-excel text-[#0e9f6e]'"></i>
+          تعداد Excel
+        </button>
+        <button (click)="exportPdf()" [disabled]="!warehouseId || exportingPdf"
+          class="flex items-center gap-[6px] px-[12px] py-[9px] rounded-[9px] border border-[#e3e6ea] bg-white text-[#4b5563] text-[12.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid" [ngClass]="exportingPdf ? 'fa-spinner fa-spin' : 'fa-file-pdf text-danger'"></i>
+          طباعة / PDF
+        </button>
+      </ng-container>
+
+      <!-- Tab 2 Filters -->
+      <ng-container *ngIf="warehouseId && activeTab === 'transactions'">
+        <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[10px] w-full sm:w-60 shadow-sm">
+          <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+          <input [(ngModel)]="movementSearch" (ngModelChange)="txPage = 1"
+            placeholder="بحث بالصنف أو ملاحظات…"
+            class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+        </div>
+
+        <app-select
+          [(ngModel)]="movementTypeFilter"
+          [options]="[{value: '', label: 'كل أنواع الحركات'}, {value: '1', label: 'شراء (وارد)'}, {value: '2', label: 'مرتجع مبيعات (وارد)'}, {value: '3', label: 'تحويل وارد'}, {value: '4', label: 'تسوية بالزيادة (وارد)'}, {value: '5', label: 'إنتاج (وارد)'}, {value: '10', label: 'بيع (صادر)'}, {value: '11', label: 'مرتجع مشتريات (صادر)'}, {value: '12', label: 'تحويل صادر'}, {value: '13', label: 'تسوية بالنقص (صادر)'}, {value: '14', label: 'تالف / هالك (صادر)'}, {value: '15', label: 'منتهي الصلاحية (صادر)'}, {value: '16', label: 'عينة (صادر)'}]"
+          (changed)="txPage = 1"
+          />
+
+        <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[8px] shadow-sm">
+          <span class="text-[12.5px] text-muted">من</span>
+          <input type="date" [(ngModel)]="movementDateFrom" (ngModelChange)="loadMovements()"
+            class="border-0 outline-none text-[13px] text-ink bg-transparent" />
+        </div>
+
+        <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[8px] shadow-sm">
+          <span class="text-[12.5px] text-muted">إلى</span>
+          <input type="date" [(ngModel)]="movementDateTo" (ngModelChange)="loadMovements()"
+            class="border-0 outline-none text-[13px] text-ink bg-transparent" />
+        </div>
+
+        <button (click)="exportTransactionsExcel()" [disabled]="!warehouseId || exportingTxExcel"
+          class="flex items-center gap-[6px] px-[12px] py-[9px] rounded-[9px] border border-[#e3e6ea] bg-white text-[#4b5563] text-[12.5px] font-semibold hover:bg-[#f3f4f7] transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid" [ngClass]="exportingTxExcel ? 'fa-spinner fa-spin' : 'fa-file-excel text-[#0e9f6e]'"></i>
+          تصدير Excel للحركات
+        </button>
+      </ng-container>
+    </div>
+
+    <!-- Empty State (No Warehouse Selected) -->
+    <div *ngIf="!warehouseId" class="bg-white border border-line rounded-[13px] p-14 text-center text-[#b3b9c2] shadow-sm">
+      <i class="fa-solid fa-warehouse text-[30px] block mb-3 opacity-40"></i>
+      اختر مخزناً لعرض أصنافه وسجل الحركات
+    </div>
+
+    <ng-container *ngIf="warehouseId">
+      
+      <!-- Tab Header Navigation -->
+      <div class="flex gap-4 border-b border-line mb-[16px]">
+        <button (click)="setTab('products')"
+          [class]="activeTab === 'products' ? 'pb-3 border-b-[3px] border-primary text-primary font-bold text-[14px]' : 'pb-3 text-muted hover:text-ink text-[14px]'"
+          class="bg-transparent border-0 cursor-pointer transition">
+          <i class="fa-solid fa-cubes ml-1"></i> الأصناف المتاحة
+        </button>
+        <button (click)="setTab('transactions')"
+          [class]="activeTab === 'transactions' ? 'pb-3 border-b-[3px] border-primary text-primary font-bold text-[14px]' : 'pb-3 text-muted hover:text-ink text-[14px]'"
+          class="bg-transparent border-0 cursor-pointer transition">
+          <i class="fa-solid fa-list-check ml-1"></i> سجل حركة المخزن (الكل)
+        </button>
+      </div>
+
+      <!-- Tab 1: Available Products Table -->
+      <div *ngIf="activeTab === 'products'" class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-[13.5px] min-w-[960px]">
+          <thead>
+            <tr class="bg-primary text-white text-[12px]">
+              <th class="px-[16px] py-[13px] text-right font-semibold w-[40px]">#</th>
+              <th class="px-[16px] py-[13px] text-right font-semibold">الاسم</th>
+              <th class="px-3 py-[13px] text-right font-semibold w-[120px]">SKU</th>
+              <th class="px-3 py-[13px] text-right font-semibold">الفئة</th>
+              <th class="px-3 py-[13px] text-center font-semibold w-[80px]">الوحدة</th>
+              <th class="px-3 py-[13px] text-center font-semibold w-[90px]">سعر التكلفة</th>
+              <th class="px-3 py-[13px] text-center font-semibold w-[90px]">سعر البيع</th>
+              <th class="px-3 py-[13px] text-center font-semibold w-[90px]">الكمية المتاحة</th>
+              <th class="px-3 py-[13px] text-center font-semibold w-[80px]">العمليات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of products; let i = index" class="border-t border-[#f1f2f4] hover:bg-[#fafbfc] transition">
+              <td class="px-[16px] py-[11px] text-muted text-[12px]">{{ (page - 1) * pageSize + i + 1 }}</td>
+              <td class="px-[16px] py-[11px] font-semibold">{{ p.name }}</td>
+              <td class="px-3 py-[11px] font-mono text-[12px] text-primary-text font-bold">{{ p.sku }}</td>
+              <td class="px-3 py-[11px] text-[#5b626d]">{{ p.categoryName }}</td>
+              <td class="px-3 py-[11px] text-center text-[#5b626d]">{{ p.unit }}</td>
+              <td class="px-3 py-[11px] text-center font-mono text-[#5b626d]">{{ p.costPrice != null ? (p.costPrice | number:'1.2-2') : '—' }}</td>
+              <td class="px-3 py-[11px] text-center font-mono text-[#5b626d]">{{ p.sellPrice != null ? (p.sellPrice | number:'1.2-2') : '—' }}</td>
+              <td class="px-3 py-[11px] text-center" [ngClass]="p.availableQuantity < 0 ? 'text-danger font-semibold' : 'text-[#5b626d]'">
+                {{ p.availableQuantity | number:'1.0-2' }}
+              </td>
+              <td class="px-3 py-[11px] text-center">
+                <button (click)="openProductMovements(p)"
+                  class="w-7 h-7 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[12px] cursor-pointer flex items-center justify-center mx-auto"
+                  title="سجل حركة الصنف">
+                  <i class="fa-solid fa-clock-rotate-left"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+
+        <div *ngIf="loading" class="p-12 text-center text-muted">
+          <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+          جارٍ تحميل أصناف المخزن…
+        </div>
+        <div *ngIf="!loading && loadError" class="p-12 text-center text-danger">
+          <i class="fa-solid fa-triangle-exclamation text-[26px] block mb-3"></i>
+          تعذّر تحميل أصناف هذا المخزن.
+          <div class="mt-3">
+            <button (click)="load()" class="text-primary-text text-[13px] font-semibold hover:underline bg-transparent border-0 cursor-pointer">
+              <i class="fa-solid fa-rotate-right text-[11px]"></i> إعادة المحاولة
+            </button>
+          </div>
+        </div>
+        <div *ngIf="!loading && !loadError && products.length === 0" class="p-12 text-center text-[#b3b9c2]">
+          <i class="fa-solid fa-box-open text-[30px] block mb-3 opacity-40"></i>
+          لا توجد أصناف مطابقة في هذا المخزن
+        </div>
+
+        <!-- Pagination -->
+        <div *ngIf="!loading && !loadError && products.length > 0" class="flex flex-wrap items-center justify-between gap-[10px] px-[16px] py-[12px] border-t border-[#f1f2f4] text-[12.5px] text-muted">
+          <span>صفحة {{ page }} من {{ totalPages }} — {{ totalCount }} صنف</span>
+          <div class="flex gap-[8px]">
+            <button (click)="prevPage()" [disabled]="!hasPreviousPage"
+              class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+              <i class="fa-solid fa-angle-right"></i>
+            </button>
+            <button (click)="nextPage()" [disabled]="!hasNextPage"
+              class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+              <i class="fa-solid fa-angle-left"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Warehouse Transactions Log -->
+      <div *ngIf="activeTab === 'transactions'" class="bg-white border border-line rounded-[13px] overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-[13.5px] min-w-[960px]">
+          <thead>
+            <tr class="bg-primary text-white text-[12px]">
+              <th class="px-[16px] py-[13px] text-right font-semibold w-[40px]">#</th>
+              <th class="px-[16px] py-[13px] text-right font-semibold w-[180px]">التاريخ</th>
+              <th class="px-3 py-[13px] text-right font-semibold">الصنف</th>
+              <th class="px-3 py-[13px] text-center font-semibold w-[140px]">نوع الحركة</th>
+              <th class="px-3 py-[13px] text-center font-semibold w-[100px]">الكمية</th>
+              <th class="px-3 py-[13px] text-center font-semibold w-[100px]">سعر الوحدة</th>
+              <th class="px-3 py-[13px] text-center font-semibold w-[120px]">القيمة الإجمالية</th>
+              <th class="px-3 py-[13px] text-right font-semibold w-[220px]">ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of paginatedMovements; let idx = index" class="border-t border-[#f1f2f4] hover:bg-[#fafbfc] transition">
+              <td class="px-[16px] py-[11px] text-muted text-[12px]">{{ (txPage - 1) * txPageSize + idx + 1 }}</td>
+              <td class="px-[16px] py-[11px] font-mono text-[12.5px] text-[#5b626d]">{{ formatDate(m.date) }}</td>
+              <td class="px-3 py-[11px] font-semibold text-primary-text">{{ m.productName }}</td>
+              <td class="px-3 py-[11px] text-center">
+                <span class="px-2 py-[3px] rounded-full text-[11px] font-semibold" [ngClass]="getTransactionTypeClass(m.type)">
+                  {{ getTransactionTypeName(m.type) }}
+                </span>
+              </td>
+              <td class="px-3 py-[11px] text-center font-mono font-bold"
+                [ngClass]="getTransactionTypeClass(m.type).includes('danger') ? 'text-danger' : 'text-[#0e9f6e]'">
+                {{ getTransactionTypeClass(m.type).includes('danger') ? '-' : '+' }}{{ m.quantity | number:'1.0-2' }}
+              </td>
+              <td class="px-3 py-[11px] text-center font-mono text-[#5b626d]">{{ m.unitCost | number:'1.2-2' }}</td>
+              <td class="px-3 py-[11px] text-center font-mono font-bold text-[#5b626d]">{{ m.totalValue | number:'1.2-2' }}</td>
+              <td class="px-3 py-[11px] text-right text-[#5b626d] text-[12.5px] truncate max-w-[220px]" [title]="m.notes || ''">
+                {{ m.notes || '—' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+
+        <div *ngIf="loadingMovements" class="p-12 text-center text-muted">
+          <i class="fa-solid fa-spinner fa-spin text-[26px] block mb-3"></i>
+          جارٍ تحميل حركات المخزن…
+        </div>
+        <div *ngIf="!loadingMovements && loadMovementsError" class="p-12 text-center text-danger">
+          <i class="fa-solid fa-triangle-exclamation text-[26px] block mb-3"></i>
+          تعذّر تحميل سجل حركات المخزن.
+          <div class="mt-3">
+            <button (click)="loadMovements()" class="text-primary-text text-[13px] font-semibold hover:underline bg-transparent border-0 cursor-pointer">
+              <i class="fa-solid fa-rotate-right text-[11px]"></i> إعادة المحاولة
+            </button>
+          </div>
+        </div>
+        <div *ngIf="!loadingMovements && !loadMovementsError && filteredMovements.length === 0" class="p-12 text-center text-[#b3b9c2]">
+          <i class="fa-solid fa-list-check text-[30px] block mb-3 opacity-40"></i>
+          لا توجد حركات مطابقة في هذا المخزن
+        </div>
+
+        <!-- Pagination for Warehouse Transactions -->
+        <div *ngIf="!loadingMovements && !loadMovementsError && filteredMovements.length > 0" class="flex flex-wrap items-center justify-between gap-[10px] px-[16px] py-[12px] border-t border-[#f1f2f4] text-[12.5px] text-muted">
+          <div class="flex items-center gap-3">
+            <span>صفحة {{ txPage }} من {{ txTotalPages }} — إجمالي {{ txTotalCount }} حركة</span>
+            <div class="flex items-center gap-1 text-[12px]">
+              <span class="text-muted">عرض:</span>
+              <app-select [(ngModel)]="txPageSize" [options]="[]" (changed)="txPage = 1" />
+            </div>
+          </div>
+          <div class="flex gap-[8px]">
+            <button (click)="txPrevPage()" [disabled]="!txHasPreviousPage"
+              class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center">
+              <i class="fa-solid fa-angle-right"></i>
+            </button>
+            <button (click)="txNextPage()" [disabled]="!txHasNextPage"
+              class="w-8 h-8 rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center">
+              <i class="fa-solid fa-angle-left"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+</div>
+
+<!-- طباعة PDF -->
+<div *ngIf="printRows as rows" class="print-root print-only-layout">
+  <app-invoice-print-header
+    documentTitle="أصناف المخزن"
+    [documentSubtitle]="selectedWarehouseName"
+    [printedAt]="today">
+  </app-invoice-print-header>
+
+  <div class="px-[6mm]">
+    <div class="border border-[#333] mb-[5mm]">
+      <table class="w-full text-[11px] border-collapse">
+        <thead>
+          <tr class="bg-[#eee] text-black border-b-2 border-black">
+            <th class="px-[6px] py-[6px] text-right font-semibold w-[5%]">#</th>
+            <th class="px-[6px] py-[6px] text-right font-semibold">الصنف</th>
+            <th class="px-[6px] py-[6px] text-right font-semibold w-[14%]">الفئة</th>
+            <th class="px-[6px] py-[6px] text-center font-semibold w-[9%]">الوحدة</th>
+            <th class="px-[6px] py-[6px] text-center font-semibold w-[13%]">سعر التكلفة</th>
+            <th class="px-[6px] py-[6px] text-center font-semibold w-[13%]">سعر البيع</th>
+            <th class="px-[6px] py-[6px] text-center font-semibold w-[13%]">الكمية المتاحة</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of rows; let i = index" class="print-avoid-break border-t border-[#ccc]">
+            <td class="px-[6px] py-[5px] text-muted">{{ i + 1 }}</td>
+            <td class="px-[6px] py-[5px]">
+              <div class="font-semibold">{{ p.name }}</div>
+              <div class="text-[9.5px] text-muted font-mono">{{ p.sku }}</div>
+            </td>
+            <td class="px-[6px] py-[5px]">{{ p.categoryName }}</td>
+            <td class="px-[6px] py-[5px] text-center">{{ p.unit }}</td>
+            <td class="px-[6px] py-[5px] text-center font-mono">{{ p.costPrice != null ? (p.costPrice | number:'1.2-2') : '—' }}</td>
+            <td class="px-[6px] py-[5px] text-center font-mono">{{ p.sellPrice != null ? (p.sellPrice | number:'1.2-2') : '—' }}</td>
+            <td class="px-[6px] py-[5px] text-center font-mono font-bold">{{ p.availableQuantity | number:'1.0-2' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Product Transactions History Modal -->
+<div *ngIf="selectedProductForMovements || loadingProductMovements"
+  class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 z-[999]"
+  (click)="closeProductMovements()">
+  <div class="bg-white rounded-[16px] border border-line w-full max-w-[800px] shadow-[0_20px_60px_rgba(0,0,0,.18)] max-h-[92vh] overflow-y-auto"
+    (click)="$event.stopPropagation()">
+
+    <div *ngIf="loadingProductMovements" class="p-14 text-center text-muted">
+      <i class="fa-solid fa-spinner fa-spin text-[28px] block mb-3"></i>
+      Securing product history...
+    </div>
+
+    <ng-container *ngIf="selectedProductForMovements as p">
+      <div class="flex items-center justify-between px-[22px] py-[16px] border-b border-[#f0f1f4]">
+        <div class="flex items-center gap-[12px]">
+          <i class="fa-solid fa-clock-rotate-left text-primary text-[18px]"></i>
+          <div class="text-[17px] font-bold">سجل حركة الصنف: {{ p.name }}</div>
+          <span class="px-2 py-[2px] font-mono bg-primary-soft text-primary-text rounded text-[11px] font-semibold">{{ p.sku }}</span>
+        </div>
+        <button (click)="closeProductMovements()"
+          class="w-8 h-8 rounded-[8px] border border-[#e3e6ea] bg-white text-muted hover:bg-[#f3f4f7] cursor-pointer flex items-center justify-center text-[16px]">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-[22px] text-right" dir="rtl">
+        <div class="mb-4 text-[13px] text-muted">
+          المخزن الحالي: <span class="font-semibold text-ink">{{ selectedWarehouseName }}</span>
+        </div>
+
+        <div *ngIf="!loadingProductMovements && loadProductMovementsError" class="p-8 text-center text-danger">
+          <i class="fa-solid fa-triangle-exclamation text-[24px] block mb-2"></i>
+          تعذّر تحميل حركة الصنف.
+        </div>
+
+        <div *ngIf="!loadingProductMovements && !loadProductMovementsError && productMovements.length === 0" class="p-12 text-center text-[#b3b9c2]">
+          <i class="fa-solid fa-box-open text-[30px] block mb-3 opacity-40"></i>
+          لا توجد حركات مسجَّلة لهذا الصنف في هذا المخزن بعد.
+        </div>
+
+        <div *ngIf="productMovements.length > 0" class="rounded-[9px] overflow-hidden border border-[#e3e6ea]">
+          <div class="max-h-[55vh] overflow-y-auto">
+          <table class="w-full text-[12.5px] border-collapse text-right" dir="rtl">
+            <thead>
+              <tr class="bg-[#fafbfc] text-[11px] text-muted border-b border-[#e3e6ea] sticky top-0 z-10">
+                <th class="px-3 py-2 text-right font-semibold w-[40px]">#</th>
+                <th class="px-3 py-2 text-right font-semibold w-[160px]">التاريخ</th>
+                <th class="px-3 py-2 text-center font-semibold w-[120px]">نوع الحركة</th>
+                <th class="px-3 py-2 text-center font-semibold w-[90px]">الكمية</th>
+                <th class="px-3 py-2 text-center font-semibold w-[90px]">التكلفة</th>
+                <th class="px-3 py-2 text-center font-semibold w-[100px]">الإجمالي</th>
+                <th class="px-3 py-2 text-right font-semibold">ملاحظات</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let m of paginatedProductMovements; let idx = index" class="border-t border-[#f0f1f4] hover:bg-[#fafbfc] transition">
+                <td class="px-3 py-[9px] text-muted text-right">{{ (modalTxPage - 1) * modalTxPageSize + idx + 1 }}</td>
+                <td class="px-3 py-[9px] font-mono text-[#5b626d] text-right">{{ formatDate(m.date) }}</td>
+                <td class="px-3 py-[9px] text-center">
+                  <span class="px-2 py-[2px] rounded-full text-[10px] font-semibold" [ngClass]="getTransactionTypeClass(m.type)">
+                    {{ getTransactionTypeName(m.type) }}
+                  </span>
+                </td>
+                <td class="px-3 py-[9px] text-center font-mono font-bold"
+                  [ngClass]="getTransactionTypeClass(m.type).includes('danger') ? 'text-danger' : 'text-[#0e9f6e]'">
+                  {{ getTransactionTypeClass(m.type).includes('danger') ? '-' : '+' }}{{ m.quantity | number:'1.0-2' }}
+                </td>
+                <td class="px-3 py-[9px] text-center font-mono text-[#5b626d]">{{ m.unitCost | number:'1.2-2' }}</td>
+                <td class="px-3 py-[9px] text-center font-mono font-bold text-[#5b626d]">{{ m.totalValue | number:'1.2-2' }}</td>
+                <td class="px-3 py-[9px] text-right text-[#5b626d] text-[12px] truncate max-w-[180px]" [title]="m.notes || ''">
+                  {{ m.notes || '—' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+
+          <!-- Pagination for Modal Product Transactions -->
+          <div *ngIf="productMovements.length > modalTxPageSize" class="flex flex-wrap items-center justify-between gap-[10px] px-3 py-2 border-t border-[#e3e6ea] text-[12px] text-muted bg-[#fafbfc]">
+            <span>صفحة {{ modalTxPage }} من {{ modalTxTotalPages }} — إجمالي {{ modalTxTotalCount }} حركة</span>
+            <div class="flex gap-[6px]">
+              <button (click)="modalTxPrev()" [disabled]="!modalTxHasPrev"
+                class="w-7 h-7 rounded border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center text-[11px]">
+                <i class="fa-solid fa-angle-right"></i>
+              </button>
+              <button (click)="modalTxNext()" [disabled]="!modalTxHasNext"
+                class="w-7 h-7 rounded border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center text-[11px]">
+                <i class="fa-solid fa-angle-left"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>

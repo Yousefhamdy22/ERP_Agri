@@ -1,0 +1,724 @@
+<app-page-header
+  title="مركز التقارير"
+  subtitle="Report Center — جميع التقارير في مكان واحد"
+  icon="fa-solid fa-chart-pie">
+</app-page-header>
+
+<div class="report-center">
+
+  <!-- ════════ Sidebar: categories ════════ -->
+  <aside class="rc-sidebar print:hidden">
+    <!-- Search -->
+    <div class="rc-search">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="onSearchChange()"
+        placeholder="ابحث عن تقرير..."
+      />
+    </div>
+
+    <!-- Category list -->
+    <nav class="rc-categories">
+      <button
+        class="rc-cat-btn"
+        [class.active]="activeCategory === 'all'"
+        (click)="selectCategory('all')"
+      >
+        <i class="fa-solid fa-layer-group"></i>
+        <span>جميع التقارير</span>
+        <span class="rc-cat-count">{{ totalReports }}</span>
+      </button>
+
+      <button
+        *ngFor="let cat of categories"
+        class="rc-cat-btn"
+        [class.active]="activeCategory === cat.id"
+        (click)="selectCategory(cat.id)"
+      >
+        <i [class]="cat.icon" [style.color]="cat.color"></i>
+        <span>{{ cat.labelAr }}</span>
+        <span class="rc-cat-count">{{ getCategoryCount(cat.id) }}</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- ════════ Main content ════════ -->
+  <main class="rc-main">
+
+    <!-- Report cards grid -->
+    <div class="rc-grid" *ngIf="!selectedReport">
+      <div
+        *ngFor="let report of displayedReports"
+        class="rc-report-card"
+        [class.disabled]="!report.hasBackend"
+        (click)="report.hasBackend ? selectReport(report) : null"
+      >
+        <div class="rc-card-icon" [style.color]="report.hasBackend ? '#3b82f6' : '#94a3b8'">
+          <i [class]="report.icon"></i>
+        </div>
+        <div class="rc-card-body">
+          <h3 class="rc-card-title">{{ report.titleAr }}</h3>
+          <p class="rc-card-subtitle">{{ report.titleEn }}</p>
+          <p class="rc-card-desc">{{ report.descriptionAr }}</p>
+        </div>
+        <div class="rc-card-badges">
+          <span class="rc-badge rc-badge--available" *ngIf="report.hasBackend">
+            <i class="fa-solid fa-circle-check"></i> متاح
+          </span>
+          <span class="rc-badge rc-badge--upcoming" *ngIf="!report.hasBackend">
+            <i class="fa-solid fa-clock"></i> قريبًا
+          </span>
+          <span class="rc-badge rc-badge--route" *ngIf="report.existingRoute" title="تتوفر صفحة مخصصة لهذا التقرير">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </span>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div *ngIf="displayedReports.length === 0" class="rc-empty">
+        <i class="fa-solid fa-inbox"></i>
+        <p>لا توجد تقارير مطابقة للبحث</p>
+      </div>
+    </div>
+
+    <!-- ════════ Selected Report Detail ════════ -->
+    <div class="rc-detail" *ngIf="selectedReport">
+      <!-- Back button -->
+      <button class="rc-back-btn print:hidden" (click)="closeReportPanel()">
+        <i class="fa-solid fa-arrow-right"></i>
+        العودة لقائمة التقارير
+      </button>
+
+      <!-- Report header -->
+      <div class="rc-detail-header">
+        <div class="rc-detail-icon">
+          <i [class]="selectedReport.icon"></i>
+        </div>
+        <div>
+          <h2>{{ selectedReport.titleAr }}</h2>
+          <p>{{ selectedReport.titleEn }} — {{ selectedReport.descriptionAr }}</p>
+        </div>
+      </div>
+
+      <!-- Open existing page link -->
+      <div
+        class="rc-open-existing print:hidden"
+        *ngIf="selectedReport.existingRoute"
+      >
+        <button class="btn-outline" (click)="openExistingReport(selectedReport)">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          فتح صفحة التقرير التفصيلية المخصصة
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <app-report-filter-panel
+        [filters]="selectedReport.filters"
+        submitLabel="عرض التقرير"
+        [showPdfPreview]="true"
+        [pdfPreviewLoading]="pdfLoading"
+        (filtersChange)="onFiltersChange($event)"
+        (submitReport)="onSubmitReport($event)"
+        (previewPdf)="onPreviewPdf($event)"
+      ></app-report-filter-panel>
+
+      <!-- Export toolbar -->
+      <app-report-toolbar
+        [visible]="true"
+        [titleAr]="selectedReport.titleAr"
+        [icon]="selectedReport.icon"
+        [supportedFormats]="selectedReport.supportedFormats"
+        [exporting]="exporting"
+        (previewPdfRequested)="onPreviewPdf()"
+        (exportRequested)="onExport($event)"
+        (printRequested)="onPrint()"
+      ></app-report-toolbar>
+
+      <!-- Success message -->
+      <div class="rc-message rc-message--success" *ngIf="exportSuccess">
+        <i class="fa-solid fa-circle-check"></i>
+        {{ exportSuccess }}
+      </div>
+
+      <!-- Error message -->
+      <div class="rc-message rc-message--error" *ngIf="exportError">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ exportError }}
+      </div>
+
+      <!-- Loading export -->
+      <div class="rc-loading" *ngIf="exporting">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>جاري تصدير التقرير...</span>
+      </div>
+
+      <!-- Data Loading -->
+      <div class="rc-data-loading" *ngIf="dataLoading">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>جاري تحميل بيانات التقرير وعرضها...</span>
+      </div>
+
+      <!-- Data Error -->
+      <div class="rc-data-error" *ngIf="!dataLoading && dataError">
+        <div class="error-box">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>{{ dataError }}</span>
+          <button type="button" class="btn-retry" (click)="loadReportData()">إعادة المحاولة</button>
+        </div>
+      </div>
+
+      <!-- ════════ Report Data View Container ════════ -->
+      <div class="rc-data-view" *ngIf="!dataLoading && reportData">
+
+        <!-- Unified Print Header (Shown only on Print) -->
+        <app-invoice-print-header
+          [documentTitle]="selectedReport.titleAr || 'تقرير'"
+          [documentSubtitle]="selectedReport.descriptionAr || selectedReport.titleEn || ''"
+          [printedAt]="today"
+          class="hidden print:block mb-4"
+        ></app-invoice-print-header>
+
+        <!-- Table Controls: Quick Search + Page Size + Pagination Buttons -->
+        <div class="rc-table-controls print:hidden" *ngIf="isTabularReport">
+          <div class="rc-table-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input
+              type="text"
+              [(ngModel)]="tableFilter"
+              (ngModelChange)="onTableFilterChange()"
+              placeholder="بحث سريع في بيانات الجدول (الصنف، الكود، العميل، البيان...)"
+            />
+            <button
+              *ngIf="tableFilter"
+              type="button"
+              (click)="tableFilter = ''; onTableFilterChange()"
+              class="btn-clear-filter"
+              title="مسح البحث"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="rc-table-meta">
+            <div class="rc-page-size-selector">
+              <span>عرض:</span>
+              <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)">
+                <option *ngFor="let s of pageSizeOptions" [value]="s">
+                  {{ s === 500 ? 'الكل (500)' : s }}
+                </option>
+              </select>
+              <span>سجل</span>
+            </div>
+
+            <div class="rc-counts-indicator">
+              <span *ngIf="totalFilteredCount === totalRawCount">
+                إجمالي <strong>{{ totalRawCount }}</strong> سجل
+              </span>
+              <span *ngIf="totalFilteredCount !== totalRawCount">
+                تمت تصفية <strong>{{ totalFilteredCount }}</strong> من <strong>{{ totalRawCount }}</strong>
+              </span>
+              <span class="rc-range" *ngIf="totalFilteredCount > 0">
+                (عرض {{ pageStartIndex }} إلى {{ pageEndIndex }})
+              </span>
+            </div>
+
+            <!-- Header Pagination Buttons -->
+            <div class="rc-pagination" *ngIf="totalPages > 1">
+              <button
+                type="button"
+                class="rc-pg-btn"
+                (click)="goToPage(1)"
+                [disabled]="currentPage === 1"
+                title="الصفحة الأولى"
+              >
+                <i class="fa-solid fa-angles-right"></i>
+              </button>
+              <button
+                type="button"
+                class="rc-pg-btn"
+                (click)="prevPage()"
+                [disabled]="currentPage === 1"
+                title="السابق"
+              >
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+              <span class="rc-pg-info">
+                صفحة <strong>{{ currentPage }}</strong> من <strong>{{ totalPages }}</strong>
+              </span>
+              <button
+                type="button"
+                class="rc-pg-btn"
+                (click)="nextPage()"
+                [disabled]="currentPage === totalPages"
+                title="التالي"
+              >
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <button
+                type="button"
+                class="rc-pg-btn"
+                (click)="goToPage(totalPages)"
+                [disabled]="currentPage === totalPages"
+                title="الصفحة الأخيرة"
+              >
+                <i class="fa-solid fa-angles-left"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. Balance Sheet View -->
+        <div *ngIf="reportDataKey === 'balance-sheet'" class="report-view-content">
+          <div class="rc-summary-grid">
+            <div class="summary-card assets">
+              <span class="label">إجمالي الأصول</span>
+              <span class="value">{{ formatCurrency(reportData.totalAssets) }}</span>
+            </div>
+            <div class="summary-card liabilities">
+              <span class="label">إجمالي الخصوم</span>
+              <span class="value">{{ formatCurrency(reportData.totalLiabilities) }}</span>
+            </div>
+            <div class="summary-card equity">
+              <span class="label">حقوق الملكية</span>
+              <span class="value">{{ formatCurrency(reportData.totalEquity) }}</span>
+            </div>
+            <div class="summary-card" [ngClass]="reportData.isBalanced ? 'balanced' : 'unbalanced'">
+              <span class="label">حالة التوازن</span>
+              <span class="value">{{ reportData.isBalanced ? 'متزنة تماماً' : 'غير متزنة (' + formatCurrency(reportData.checkValue) + ')' }}</span>
+            </div>
+          </div>
+
+          <div class="sections-container" *ngIf="reportData.sections">
+            <div class="report-section" *ngFor="let sec of reportData.sections">
+              <div class="section-header">
+                <h4>{{ sec.sectionName }}</h4>
+                <span class="section-total">الإجمالي: {{ formatCurrency(sec.sectionTotal) }}</span>
+              </div>
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>كود الحساب</th>
+                    <th>اسم الحساب</th>
+                    <th class="text-left">الرصيد</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let line of sec.lines" [class.subtotal-row]="!line.isLeaf">
+                    <td class="font-mono">{{ line.accountCode }}</td>
+                    <td [style.paddingRight.px]="line.level ? (line.level * 16) : 8">{{ line.accountNameAr || line.accountName }}</td>
+                    <td class="text-left font-mono font-bold">{{ formatCurrency(line.balance) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Income Statement View -->
+        <div *ngIf="reportDataKey === 'income-statement'" class="report-view-content">
+          <div class="rc-summary-grid">
+            <div class="summary-card sales">
+              <span class="label">صافي المبيعات</span>
+              <span class="value">{{ formatCurrency(reportData.netSales) }}</span>
+            </div>
+            <div class="summary-card cogs">
+              <span class="label">تكلفة المبيعات</span>
+              <span class="value">{{ formatCurrency(reportData.totalCostOfSales) }}</span>
+            </div>
+            <div class="summary-card gross">
+              <span class="label">مجمل الربح</span>
+              <span class="value">{{ formatCurrency(reportData.grossProfit) }}</span>
+            </div>
+            <div class="summary-card" [ngClass]="reportData.netIncome >= 0 ? 'profit' : 'loss'">
+              <span class="label">صافي الدخل</span>
+              <span class="value">{{ formatCurrency(reportData.netIncome) }}</span>
+            </div>
+          </div>
+
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>البند</th>
+                <th class="text-left">المبلغ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>صافي المبيعات (Net Sales)</td><td class="text-left font-mono font-bold">{{ formatCurrency(reportData.netSales) }}</td></tr>
+              <tr><td>تكلفة المبيعات (Cost of Goods Sold)</td><td class="text-left font-mono text-danger">{{ formatCurrency(reportData.totalCostOfSales) }}</td></tr>
+              <tr class="highlight-row"><td><strong>مجمل الربح (Gross Profit)</strong></td><td class="text-left font-mono font-bold text-success">{{ formatCurrency(reportData.grossProfit) }}</td></tr>
+              <tr><td>المصروفات التشغيلية (Operating Expenses)</td><td class="text-left font-mono">{{ formatCurrency(reportData.operatingExpensesTotal) }}</td></tr>
+              <tr class="highlight-row"><td><strong>صافي الدخل التشغيلي (Operating Income)</strong></td><td class="text-left font-mono font-bold">{{ formatCurrency(reportData.operatingIncome) }}</td></tr>
+              <tr><td>إيرادات أخرى (Other Revenues)</td><td class="text-left font-mono">{{ formatCurrency(reportData.nonOperatingRevenueTotal) }}</td></tr>
+              <tr><td>مصروفات أخرى (Other Expenses)</td><td class="text-left font-mono">{{ formatCurrency(reportData.nonOperatingExpensesTotal) }}</td></tr>
+              <tr class="total-row"><td><strong>صافي الدخل النهائي (Net Income)</strong></td><td class="text-left font-mono font-bold text-primary">{{ formatCurrency(reportData.netIncome) }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 3. Trial Balance View -->
+        <div *ngIf="reportDataKey === 'trial-balance'" class="report-view-content">
+          <div class="rc-summary-grid">
+            <div class="summary-card debit">
+              <span class="label">إجمالي المدين</span>
+              <span class="value">{{ formatCurrency(reportData.totalDebits) }}</span>
+            </div>
+            <div class="summary-card credit">
+              <span class="label">إجمالي الدائن</span>
+              <span class="value">{{ formatCurrency(reportData.totalCredits) }}</span>
+            </div>
+            <div class="summary-card" [ngClass]="reportData.isBalanced ? 'balanced' : 'unbalanced'">
+              <span class="label">حالة الميزان</span>
+              <span class="value">{{ reportData.isBalanced ? 'متوازن' : 'فارق: ' + formatCurrency(reportData.difference) }}</span>
+            </div>
+          </div>
+
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>كود الحساب</th>
+                <th>اسم الحساب</th>
+                <th>النوع</th>
+                <th class="text-left">مدين</th>
+                <th class="text-left">دائن</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let line of paginatedRows">
+                <td class="font-mono">{{ line.accountCode }}</td>
+                <td>{{ line.accountNameAr || line.accountName }}</td>
+                <td><span class="badge">{{ line.accountType }}</span></td>
+                <td class="text-left font-mono">{{ formatCurrency(line.debitBalance) }}</td>
+                <td class="text-left font-mono">{{ formatCurrency(line.creditBalance) }}</td>
+              </tr>
+              <tr *ngIf="paginatedRows.length === 0">
+                <td colspan="5" class="text-center py-6 text-slate-400">لا توجد بيانات مطابقة للبحث</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="3">الإجمالي العام</td>
+                <td class="text-left font-mono font-bold">{{ formatCurrency(reportData.totalDebits) }}</td>
+                <td class="text-left font-mono font-bold">{{ formatCurrency(reportData.totalCredits) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- 4. Detailed Sales View -->
+        <div *ngIf="reportDataKey === 'detailed-sales'" class="report-view-content">
+          <div class="rc-summary-grid" *ngIf="reportData.summary">
+            <div class="summary-card count">
+              <span class="label">عدد الفواتير</span>
+              <span class="value">{{ reportData.summary.totalSalesInvoicesCount }}</span>
+            </div>
+            <div class="summary-card sales">
+              <span class="label">صافي المبيعات</span>
+              <span class="value">{{ formatCurrency(reportData.summary.totalNetSales) }}</span>
+            </div>
+            <div class="summary-card paid">
+              <span class="label">إجمالي المدفوع</span>
+              <span class="value">{{ formatCurrency(reportData.summary.totalAmountPaid) }}</span>
+            </div>
+            <div class="summary-card outstanding">
+              <span class="label">إجمالي المتبقي</span>
+              <span class="value">{{ formatCurrency(reportData.summary.totalAmountOutstanding) }}</span>
+            </div>
+          </div>
+
+          <table class="report-table" *ngIf="reportData.invoices">
+            <thead>
+              <tr>
+                <th>رقم الفاتورة</th>
+                <th>التاريخ</th>
+                <th>العميل</th>
+                <th>النوع</th>
+                <th class="text-left">الإجمالي</th>
+                <th class="text-left">المدفوع</th>
+                <th class="text-left">المتبقي</th>
+                <th class="text-center">الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let inv of paginatedRows">
+                <td class="font-mono font-bold">{{ inv.invoiceNumber }}</td>
+                <td>{{ formatDate(inv.invoiceDate) }}</td>
+                <td>{{ inv.customerName }}</td>
+                <td>{{ inv.invoiceType }}</td>
+                <td class="text-left font-mono font-bold">{{ formatCurrency(inv.grandTotal) }}</td>
+                <td class="text-left font-mono text-success">{{ formatCurrency(inv.amountPaid) }}</td>
+                <td class="text-left font-mono text-danger">{{ formatCurrency(inv.amountOutstanding) }}</td>
+                <td class="text-center"><span class="badge">{{ inv.status }}</span></td>
+              </tr>
+              <tr *ngIf="paginatedRows.length === 0">
+                <td colspan="8" class="text-center py-6 text-slate-400">لا توجد فواتير مطابقة لبحثك</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 5. Top Selling Items View -->
+        <div *ngIf="reportDataKey === 'top-selling-items'" class="report-view-content">
+          <div class="rc-summary-grid" *ngIf="reportData.summary">
+            <div class="summary-card count">
+              <span class="label">إجمالي الكميات المباعة</span>
+              <span class="value">{{ reportData.summary.totalQuantitySold }}</span>
+            </div>
+            <div class="summary-card revenue">
+              <span class="label">إجمالي إيراد المبيعات</span>
+              <span class="value">{{ formatCurrency(reportData.summary.totalNetSalesRevenue) }}</span>
+            </div>
+            <div class="summary-card profit">
+              <span class="label">إجمالي الأرباح</span>
+              <span class="value">{{ formatCurrency(reportData.summary.totalNetProfit) }}</span>
+            </div>
+          </div>
+
+          <table class="report-table" *ngIf="reportData.items">
+            <thead>
+              <tr>
+                <th>الصنف / المنتج</th>
+                <th>التصنيف</th>
+                <th class="text-center">الكمية المباعة</th>
+                <th class="text-left">صافي الإيراد</th>
+                <th class="text-left">صافي الربح</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of paginatedRows">
+                <td class="font-bold">{{ item.productName }}</td>
+                <td>{{ item.categoryName }}</td>
+                <td class="text-center font-mono font-bold">{{ item.totalQuantitySold }}</td>
+                <td class="text-left font-mono font-bold text-primary">{{ formatCurrency(item.netSalesAmount) }}</td>
+                <td class="text-left font-mono font-bold text-success">{{ formatCurrency(item.netProfit) }}</td>
+              </tr>
+              <tr *ngIf="paginatedRows.length === 0">
+                <td colspan="5" class="text-center py-6 text-slate-400">لا توجد أصناف مطابقة لبحثك</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 6. General Ledger View -->
+        <div *ngIf="reportDataKey === 'general-ledger'" class="report-view-content">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>التاريخ</th>
+                <th>رقم القيد</th>
+                <th>الحساب</th>
+                <th>البيان</th>
+                <th class="text-left">مدين</th>
+                <th class="text-left">دائن</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let line of paginatedRows">
+                <td>{{ formatDate(line.date) }}</td>
+                <td class="font-mono font-bold">{{ line.entryNumber }}</td>
+                <td>{{ line.accountCode }} - {{ line.accountName }}</td>
+                <td>{{ line.description }}</td>
+                <td class="text-left font-mono text-primary font-bold">{{ formatCurrency(line.debitAmount) }}</td>
+                <td class="text-left font-mono text-danger font-bold">{{ formatCurrency(line.creditAmount) }}</td>
+              </tr>
+              <tr *ngIf="paginatedRows.length === 0">
+                <td colspan="6" class="text-center py-6 text-slate-400">لا توجد قيود مطابقة لبحثك</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 7. Party Statement View -->
+        <div *ngIf="reportDataKey === 'customer-statement' || reportDataKey === 'supplier-statement'" class="report-view-content">
+          <div class="rc-summary-grid">
+            <div class="summary-card">
+              <span class="label">الرصيد الافتتاحي</span>
+              <span class="value">{{ formatCurrency(reportData.openingBalance) }}</span>
+            </div>
+            <div class="summary-card debit">
+              <span class="label">إجمالي المدين</span>
+              <span class="value">{{ formatCurrency(reportData.totalDebit) }}</span>
+            </div>
+            <div class="summary-card credit">
+              <span class="label">إجمالي الدائن</span>
+              <span class="value">{{ formatCurrency(reportData.totalCredit) }}</span>
+            </div>
+            <div class="summary-card" [ngClass]="reportData.closingBalance >= 0 ? 'profit' : 'loss'">
+              <span class="label">الرصيد الختامي</span>
+              <span class="value">{{ formatCurrency(reportData.closingBalance) }}</span>
+            </div>
+          </div>
+
+          <table class="report-table" *ngIf="reportData.lines">
+            <thead>
+              <tr>
+                <th>التاريخ</th>
+                <th>رقم المستند</th>
+                <th>نوع الحركة</th>
+                <th>البيان</th>
+                <th class="text-left">مدين</th>
+                <th class="text-left">دائن</th>
+                <th class="text-left">الرصيد</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of paginatedRows">
+                <td>{{ formatDate(row.date) }}</td>
+                <td class="font-mono">{{ row.documentNumber }}</td>
+                <td>{{ row.documentType }}</td>
+                <td>{{ row.description }}</td>
+                <td class="text-left font-mono">{{ formatCurrency(row.debit) }}</td>
+                <td class="text-left font-mono">{{ formatCurrency(row.credit) }}</td>
+                <td class="text-left font-mono font-bold">{{ formatCurrency(row.runningBalance) }}</td>
+              </tr>
+              <tr *ngIf="paginatedRows.length === 0">
+                <td colspan="7" class="text-center py-6 text-slate-400">لا توجد حركات مطابقة لبحثك</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 8. Stock Balance View (أرصدة المخزون الحالية) -->
+        <div *ngIf="reportDataKey === 'stock-balance'" class="report-view-content">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>اسم الصنف</th>
+                <th>المخزن</th>
+                <th class="text-center">الكمية المتوفرة</th>
+                <th class="text-left">إجمالي القيمة</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of paginatedRows">
+                <td class="font-bold">{{ item.productName }}</td>
+                <td>{{ item.warehouseName }}</td>
+                <td class="text-center font-mono font-bold">{{ item.quantity }}</td>
+                <td class="text-left font-mono font-bold text-primary">{{ formatCurrency(item.value) }}</td>
+              </tr>
+              <tr *ngIf="paginatedRows.length === 0">
+                <td colspan="4" class="text-center py-6 text-slate-400">لا توجد أصناف مطابقة لبحثك في هذا المخزن</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 9. Aging Report View -->
+        <div *ngIf="reportDataKey === 'aging-report' || reportDataKey === 'customer-aging' || reportDataKey === 'supplier-aging'" class="report-view-content">
+          <div class="rc-summary-grid" *ngIf="reportData.totals">
+            <div class="summary-card outstanding">
+              <span class="label">إجمالي المديونية</span>
+              <span class="value">{{ formatCurrency(reportData.totals.total) }}</span>
+            </div>
+            <div class="summary-card">
+              <span class="label">جاري (0-30 يوم)</span>
+              <span class="value">{{ formatCurrency(reportData.totals.current) }}</span>
+            </div>
+            <div class="summary-card">
+              <span class="label">31-60 يوم</span>
+              <span class="value">{{ formatCurrency(reportData.totals.days30) }}</span>
+            </div>
+            <div class="summary-card">
+              <span class="label">+120 يوم</span>
+              <span class="value text-danger">{{ formatCurrency(reportData.totals.over120) }}</span>
+            </div>
+          </div>
+
+          <table class="report-table" *ngIf="reportData.details">
+            <thead>
+              <tr>
+                <th>الطرف</th>
+                <th class="text-left">جاري (0-30)</th>
+                <th class="text-left">31-60</th>
+                <th class="text-left">61-90</th>
+                <th class="text-left">91-120</th>
+                <th class="text-left">+120</th>
+                <th class="text-left">الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of paginatedRows">
+                <td class="font-bold">{{ row.partyName }}</td>
+                <td class="text-left font-mono">{{ formatCurrency(row.current) }}</td>
+                <td class="text-left font-mono">{{ formatCurrency(row.days30) }}</td>
+                <td class="text-left font-mono">{{ formatCurrency(row.days60) }}</td>
+                <td class="text-left font-mono">{{ formatCurrency(row.days90) }}</td>
+                <td class="text-left font-mono text-danger">{{ formatCurrency(row.over120) }}</td>
+                <td class="text-left font-mono font-bold text-primary">{{ formatCurrency(row.total) }}</td>
+              </tr>
+              <tr *ngIf="paginatedRows.length === 0">
+                <td colspan="7" class="text-center py-6 text-slate-400">لا توجد بيانات مطابقة لبحثك</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Bottom Pagination Bar -->
+        <div class="rc-bottom-pagination print:hidden" *ngIf="isTabularReport && totalPages > 1">
+          <div class="rc-counts-indicator">
+            عرض <strong>{{ pageStartIndex }}</strong> إلى <strong>{{ pageEndIndex }}</strong> من إجمالي <strong>{{ totalFilteredCount }}</strong> سجل
+          </div>
+          <div class="rc-pagination">
+            <button
+              type="button"
+              class="rc-pg-btn"
+              (click)="goToPage(1)"
+              [disabled]="currentPage === 1"
+              title="الصفحة الأولى"
+            >
+              <i class="fa-solid fa-angles-right"></i>
+            </button>
+            <button
+              type="button"
+              class="rc-pg-btn"
+              (click)="prevPage()"
+              [disabled]="currentPage === 1"
+              title="السابق"
+            >
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <span class="rc-pg-info">
+              صفحة <strong>{{ currentPage }}</strong> من <strong>{{ totalPages }}</strong>
+            </span>
+            <button
+              type="button"
+              class="rc-pg-btn"
+              (click)="nextPage()"
+              [disabled]="currentPage === totalPages"
+              title="التالي"
+            >
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button
+              type="button"
+              class="rc-pg-btn"
+              (click)="goToPage(totalPages)"
+              [disabled]="currentPage === totalPages"
+              title="الصفحة الأخيرة"
+            >
+              <i class="fa-solid fa-angles-left"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ════════ PDF Preview Modal ════════ -->
+<app-pdf-preview-modal
+  [isOpen]="pdfModalOpen"
+  [title]="'معاينة: ' + (selectedReport ? selectedReport.titleAr : 'التقرير')"
+  [subtitle]="selectedReport ? selectedReport.titleEn : ''"
+  [pdfUrl]="pdfUrl"
+  [fileName]="pdfFileName"
+  [loading]="pdfLoading"
+  [error]="pdfError"
+  (close)="closePdfModal()"
+  (download)="downloadCurrentPdf()"
+  (print)="onPrint()"
+  (retry)="onPreviewPdf()"
+></app-pdf-preview-modal>

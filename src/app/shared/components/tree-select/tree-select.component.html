@@ -1,0 +1,70 @@
+<div class="relative">
+
+  <!-- Trigger button — looks like a normal select -->
+  <button type="button" (click)="toggle()" [disabled]="disabled"
+    class="w-full flex items-center justify-between px-[11px] py-[9px] border rounded-[9px] text-[14px] bg-white cursor-pointer text-right transition-colors duration-150 outline-none"
+    [ngClass]="invalid ? 'border-danger' : open ? 'border-primary' : 'border-[#e3e6ea]'">
+
+    <span [ngClass]="selectedOption ? 'text-[#1e2330]' : 'text-[#b3b9c2]'">
+      {{ selectedOption?.label || placeholder }}
+    </span>
+
+    <i class="fa-solid fa-chevron-down text-[12px] text-[#b3b9c2] transition-transform duration-200 shrink-0 ms-2"
+      [ngClass]="open ? 'rotate-180' : ''"></i>
+  </button>
+
+  <!-- Backdrop: closes panel on outside click -->
+  <div *ngIf="open" class="fixed inset-0 z-[55]" (click)="close()"></div>
+
+  <!-- Dropdown panel -->
+  <div *ngIf="open"
+    class="absolute top-[calc(100%+4px)] right-0 left-0 z-[60] bg-white border border-[#e3e6ea] rounded-[11px] shadow-[0_10px_32px_rgba(0,0,0,.13)] max-h-[320px] flex flex-col">
+
+    <!-- Search input -->
+    <div class="px-[10px] pt-[8px] pb-[4px] border-b border-[#f1f2f4] shrink-0">
+      <div class="flex items-center gap-[6px] bg-[#f6f7f9] rounded-[7px] px-[9px] py-[7px]">
+        <i class="fa-solid fa-magnifying-glass text-[11px] text-[#b3b9c2]"></i>
+        <input [(ngModel)]="search" placeholder="ابحث بالاسم أو الكود..."
+          class="border-0 outline-none bg-transparent text-[12.5px] w-full text-[#1e2330]"
+          (click)="$event.stopPropagation()" />
+        <button *ngIf="search" (click)="search = ''; $event.stopPropagation()"
+          class="text-[#a3a8b2] hover:text-[#1e2330] bg-transparent border-0 cursor-pointer text-[11px]">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Options list -->
+    <div class="overflow-y-auto py-[4px]">
+      <!-- Empty / reset option -->
+      <div (click)="select(emptyValue)"
+        class="flex items-center px-[13px] py-[9px] text-[13px] text-[#b3b9c2] cursor-pointer hover:bg-[#f5f6fa] transition-colors duration-100">
+        {{ placeholder }}
+      </div>
+
+      <!-- Tree options -->
+      <div *ngFor="let opt of filteredOptions" (click)="select(opt.value)"
+        class="flex items-center gap-[5px] px-[13px] py-[9px] text-[13.5px] cursor-pointer transition-colors duration-100"
+        [ngClass]="value === opt.value
+          ? 'bg-[#eef0fb] text-primary font-semibold'
+          : 'text-[#1e2330] hover:bg-[#f5f6fa]'">
+
+        <span *ngIf="opt.level > 0 && !search"
+          class="font-mono text-[10px] text-[#c3c8d1] shrink-0 tracking-tighter">{{ dashes(opt.level) }}</span>
+
+        <span>{{ opt.label }}</span>
+
+        <i *ngIf="value === opt.value"
+          class="fa-solid fa-check text-[11px] text-primary ms-auto shrink-0"></i>
+      </div>
+
+      <!-- No results -->
+      <div *ngIf="search && filteredOptions.length === 0"
+        class="px-[13px] py-[14px] text-center text-[12.5px] text-[#b3b9c2]">
+        <i class="fa-solid fa-magnifying-glass text-[14px] block mb-[4px] opacity-40"></i>
+        لا توجد نتائج
+      </div>
+    </div>
+
+  </div>
+</div>

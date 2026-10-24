@@ -1,0 +1,110 @@
+<div class="min-h-screen w-full bg-slate-100/90 text-slate-800 flex items-center justify-center p-4 font-['Cairo'] relative select-none">
+  
+  <!-- Main Centered Card Container -->
+  <div class="w-full max-w-[420px] bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-8 animate-fade-in-up">
+    
+    <!-- Logo & Header Section -->
+    <div class="flex flex-col items-center text-center mb-7">
+      <!-- Framed Logo Box -->
+      <div class="w-24 h-24 rounded-2xl bg-white border border-slate-200 shadow-sm p-2 flex items-center justify-center mb-4 hover:shadow-md transition-shadow">
+        <img *ngIf="!logoFailed" src="log.jpg" (error)="onLogoError()" alt="Logo" class="w-full h-full object-contain" />
+        <div *ngIf="logoFailed" class="flex flex-col items-center justify-center text-indigo-600">
+          <i class="fa-solid fa-boxes-stacked text-3xl mb-1"></i>
+          <span class="text-[9px] font-bold">ERP SYSTEM</span>
+        </div>
+      </div>
+
+      <!-- App Titles -->
+      <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+        نظام المحاسبة والمخازن
+      </h1>
+      <p class="text-xs text-slate-500 font-medium mt-1">
+        Accounting & Inventory ERP System
+      </p>
+    </div>
+
+    <!-- Error Alert Message -->
+    <div *ngIf="errorMessage" class="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5 animate-pop">
+      <i class="fa-solid fa-circle-exclamation text-rose-500 text-sm shrink-0"></i>
+      <span class="flex-1 font-semibold">{{ errorMessage }}</span>
+    </div>
+
+    <!-- Slow Server Alert Message -->
+    <div *ngIf="slowServer" class="mb-5 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5 animate-pop">
+      <i class="fa-solid fa-spinner fa-spin text-amber-600 text-sm shrink-0"></i>
+      <span class="flex-1">الخادم قيد التنبيه من وضع السكون، يرجى الانتظار…</span>
+    </div>
+
+    <!-- Form Element -->
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+      
+      <!-- Email Field -->
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5 text-right">
+          البريد الإلكتروني
+        </label>
+        <div class="relative flex items-center">
+          <div class="absolute right-3.5 text-slate-400 pointer-events-none">
+            <i class="fa-regular fa-envelope text-sm"></i>
+          </div>
+          <input formControlName="email" type="email" autofocus placeholder="example@mail.com"
+            class="w-full pr-10 pl-4 py-2.5 bg-slate-50/50 border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition duration-150 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
+            [ngClass]="invalid('email') ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-rose-500/10' : 'border-slate-200'" />
+        </div>
+        <div *ngIf="invalid('email')" class="text-[11px] text-rose-500 font-semibold mt-1 text-right">
+          أدخل بريداً إلكترونياً صحيحاً
+        </div>
+      </div>
+
+      <!-- Password Field -->
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1.5 text-right">
+          كلمة المرور
+        </label>
+        <div class="relative flex items-center">
+          <div class="absolute right-3.5 text-slate-400 pointer-events-none">
+            <i class="fa-solid fa-lock text-sm"></i>
+          </div>
+          <input formControlName="password" [type]="showPassword ? 'text' : 'password'" placeholder="••••••••"
+            class="w-full pr-10 pl-10 py-2.5 bg-slate-50/50 border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none transition duration-150 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/10"
+            [ngClass]="invalid('password') ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-rose-500/10' : 'border-slate-200'" />
+          
+          <button type="button" (click)="togglePasswordVisibility()" tabindex="-1"
+            class="absolute left-3 text-slate-400 hover:text-slate-600 p-1 cursor-pointer transition-colors"
+            [title]="showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'">
+            <i class="fa-solid text-xs" [ngClass]="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+          </button>
+        </div>
+        <div *ngIf="invalid('password')" class="text-[11px] text-rose-500 font-semibold mt-1 text-right">
+          كلمة المرور مطلوبة
+        </div>
+      </div>
+
+      <!-- Remember Me -->
+      <div class="flex items-center justify-between pt-1">
+        <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-600 font-medium hover:text-slate-800">
+          <input type="checkbox" formControlName="remember"
+            class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 accent-indigo-600" />
+          تذكر البيانات
+        </label>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" [disabled]="submitting"
+        class="w-full py-3 px-5 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-md shadow-indigo-600/20 transition duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+        <i *ngIf="submitting" class="fa-solid fa-spinner fa-spin text-sm"></i>
+        <i *ngIf="!submitting" class="fa-solid fa-arrow-left-to-bracket text-sm"></i>
+        <span>
+          {{ submitting ? (slowServer ? 'الخادم قيد التنبيه، يرجى الانتظار…' : 'جارٍ الدخول…') : 'تسجيل الدخول' }}
+        </span>
+      </button>
+    </form>
+
+    <!-- Footer -->
+    <div class="mt-7 pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400 font-medium">
+      جميع الحقوق محفوظة © 2026 — نظام المحاسبة والمخازن
+    </div>
+
+  </div>
+
+</div>

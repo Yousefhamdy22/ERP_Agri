@@ -1,0 +1,326 @@
+<div class="pt-5">
+
+  <app-page-header [breadcrumbs]="breadcrumbs" [showTitle]="false"></app-page-header>
+
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-start gap-[20px]">
+
+  <div class="flex-1 min-w-0">
+    <app-page-header
+      [showBreadcrumb]="false"
+      title="تحديث أسعار الأصناف"
+      icon="fa-solid fa-tags">
+    </app-page-header>
+
+    <!-- Product picker -->
+    <div class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm mb-[16px]">
+      <div class="text-[13.5px] font-bold mb-[14px] flex items-center gap-[8px]">
+        <i class="fa-solid fa-magnifying-glass text-primary"></i> اختر الصنف
+      </div>
+
+      <ng-container *ngIf="!selectedProduct">
+        <div class="flex items-center gap-2 bg-white border border-line rounded-[9px] px-3 py-[9px] mb-[14px] shadow-sm">
+          <i class="fa-solid fa-magnifying-glass text-[#a3a8b2] text-[13px]"></i>
+          <input [(ngModel)]="search" [ngModelOptions]="{standalone:true}" placeholder="بحث بالاسم أو SKU..."
+            class="border-0 outline-none bg-transparent text-[13px] w-full text-ink" />
+        </div>
+
+        <div class="max-h-[320px] overflow-y-auto rounded-[9px] border border-[#e3e6ea] divide-y divide-[#f0f1f4]">
+          <div *ngFor="let p of filteredProducts" (click)="selectProduct(p)"
+            class="flex items-center justify-between px-[14px] py-[11px] cursor-pointer hover:bg-primary-soft transition">
+            <div class="min-w-0">
+              <div class="text-[13.5px] font-semibold truncate">{{ p.displayName }}</div>
+              <div class="text-[11px] text-muted font-mono">{{ p.sku }}</div>
+            </div>
+            <div class="text-[13px] font-mono font-bold text-primary-text shrink-0 ms-3">{{ p.price | number:'1.2-2' }}</div>
+          </div>
+          <div *ngIf="!filteredProducts.length" class="p-[20px] text-center text-[12.5px] text-[#b3b9c2]">
+            لا توجد أصناف مطابقة
+          </div>
+        </div>
+      </ng-container>
+
+      <div *ngIf="selectedProduct" class="flex items-center justify-between bg-[#fafbfc] border border-[#e3e6ea] rounded-[10px] px-[16px] py-[14px]">
+        <div>
+          <div class="text-[14px] font-bold">{{ selectedProduct.displayName }}</div>
+          <div class="text-[11.5px] text-muted font-mono mt-[2px]">{{ selectedProduct.sku }} — السعر الحالي: {{ selectedProduct.price | number:'1.2-2' }}</div>
+        </div>
+        <button (click)="clearSelection()"
+          class="px-3 py-[8px] rounded-[8px] border border-line bg-white text-[#5b626d] hover:bg-[#f3f4f7] transition text-[12.5px] cursor-pointer">
+          <i class="fa-solid fa-rotate-right text-[11px]"></i> تغيير الصنف
+        </button>
+      </div>
+    </div>
+
+    <!-- Update form (shown once "تحديث" clicked on a current price row) -->
+    <div *ngIf="selectedProduct && updatingEntry" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm mb-[16px]">
+      <div class="text-[13.5px] font-bold mb-[4px] flex items-center gap-[8px]">
+        <i class="fa-solid fa-pen-to-square text-primary"></i> تحديث السعر الحالي — {{ updatingEntry.priceType }}
+      </div>
+      <div class="text-[12px] text-muted mb-[16px]">السعر الحالي: {{ updatingEntry.amount | number:'1.2-2' }}</div>
+
+      <form [formGroup]="updateForm" (ngSubmit)="submitUpdate()">
+
+        <!-- طريقة تحديد السعر الجديد: يدوي أو محسوب تلقائياً من التكلفة الحالية + نسبة الهامش -->
+        <div class="flex flex-wrap items-center gap-[18px] mb-[16px]">
+          <label class="flex items-center gap-[6px] text-[13px] font-semibold cursor-pointer">
+            <input type="radio" name="updatePriceEntryMode" value="manual" [(ngModel)]="updatePriceEntryMode" [ngModelOptions]="{standalone: true}" (ngModelChange)="onUpdatePriceEntryModeChange()" />
+            إدخال السعر يدوياً
+          </label>
+          <label class="flex items-center gap-[6px] text-[13px] font-semibold cursor-pointer"
+            [ngClass]="currentCostPrice == null ? 'opacity-50 cursor-not-allowed' : ''">
+            <input type="radio" name="updatePriceEntryMode" value="markup" [(ngModel)]="updatePriceEntryMode" [ngModelOptions]="{standalone: true}"
+              [disabled]="currentCostPrice == null" (ngModelChange)="onUpdatePriceEntryModeChange()" />
+            حساب تلقائي = التكلفة الحالية + نسبة الهامش
+          </label>
+          <span *ngIf="currentCostPrice == null" class="text-[11px] text-[#b3b9c2]">(لا تتوفر تكلفة حالية لهذا الصنف)</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-[16px] gap-y-[16px] mb-[18px]">
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              السعر الجديد <span class="text-danger">*</span>
+              <span *ngIf="updatePriceEntryMode === 'markup'" class="text-[#b3b9c2] font-normal text-[11px]">(محسوب تلقائياً — التكلفة {{ currentCostPrice | number:'1.2-2' }})</span>
+            </label>
+            <input type="number" formControlName="newPrice" placeholder="0.00" step="0.01" [readonly]="updatePriceEntryMode === 'markup'"
+              class="w-full px-[10px] py-[8px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+              [ngClass]="[invalid('newPrice') ? 'border-danger' : 'border-[#e3e6ea]', updatePriceEntryMode === 'markup' ? 'bg-[#fafbfc] text-muted' : '']" />
+            <div *ngIf="invalid('newPrice')" class="text-[11px] text-danger mt-[4px]">أدخل سعراً صحيحاً أكبر من صفر</div>
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              نسبة الهامش % <span *ngIf="updatePriceEntryMode === 'manual'" class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input type="number" formControlName="markupPercentage" placeholder="0" step="0.01" (input)="recomputeMarkupNewPrice()"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              نسبة الخصم % <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input type="number" formControlName="discountPercentage" placeholder="0" step="0.01" min="0" max="100"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">ساري من (السعر الجديد)</label>
+            <input type="date" formControlName="newPriceEffectiveFrom"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] outline-none focus:border-primary" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              ساري حتى (السعر الجديد) <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري — مفتوح إن تُرك فارغاً)</span>
+            </label>
+            <input type="date" formControlName="effectiveTo"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] outline-none focus:border-primary" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">تاريخ انتهاء السعر القديم</label>
+            <input type="date" formControlName="oldPriceEffectiveTo"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] outline-none focus:border-primary" />
+          </div>
+
+          <div class="col-span-1 sm:col-span-2 lg:col-span-4 group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">سبب التحديث <span class="text-danger">*</span></label>
+            <input formControlName="reason" maxlength="255" placeholder="مثال: تعديل حسب سعر السوق"
+              class="w-full px-[10px] py-[8px] border rounded-[9px] text-[13.5px] outline-none focus:border-primary transition"
+              [ngClass]="invalid('reason') ? 'border-danger' : 'border-[#e3e6ea]'" />
+            <div *ngIf="invalid('reason')" class="text-[11px] text-danger mt-[4px]">سبب التحديث مطلوب</div>
+          </div>
+
+        </div>
+
+        <div class="flex gap-[10px]">
+          <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">
+            {{ saving ? 'جارٍ الحفظ…' : 'حفظ التحديث' }}
+          </app-button>
+          <app-button variant="ghost" (click)="cancelUpdate()">إلغاء</app-button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Add new price form (POST — لسعر/نوع لا يوجد له سجل مفتوح بعد) -->
+    <div *ngIf="selectedProduct && addingNew" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm mb-[16px]">
+      <div class="text-[13.5px] font-bold mb-[16px] flex items-center gap-[8px]">
+        <i class="fa-solid fa-plus text-primary"></i> إضافة سعر جديد
+      </div>
+
+      <form [formGroup]="addForm" (ngSubmit)="submitAddNew()">
+
+        <!-- طريقة تحديد سعر البيع: يدوي أو محسوب تلقائياً من التكلفة + نسبة الهامش -->
+        <div class="flex flex-wrap items-center gap-[18px] mb-[16px]">
+          <label class="flex items-center gap-[6px] text-[13px] font-semibold cursor-pointer">
+            <input type="radio" name="addPriceEntryMode" value="manual" [(ngModel)]="addPriceEntryMode" [ngModelOptions]="{standalone: true}" (ngModelChange)="onAddPriceEntryModeChange()" />
+            إدخال السعر يدوياً
+          </label>
+          <label class="flex items-center gap-[6px] text-[13px] font-semibold cursor-pointer">
+            <input type="radio" name="addPriceEntryMode" value="markup" [(ngModel)]="addPriceEntryMode" [ngModelOptions]="{standalone: true}" (ngModelChange)="onAddPriceEntryModeChange()" />
+            حساب تلقائي = التكلفة + نسبة الهامش
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-[16px] gap-y-[16px] mb-[18px]">
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">نوع السعر</label>
+            <app-select
+          formControlName="priceType"
+          [options]="priceTypes.map(t => ({value: t.value, label: t.label}))"
+          />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">العملة</label>
+            <app-select
+          formControlName="currency"
+          [options]="currencies.map(c => ({value: c.value, label: c.label}))"
+          />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              السعر <span class="text-danger">*</span>
+              <span *ngIf="addPriceEntryMode === 'markup'" class="text-[#b3b9c2] font-normal text-[11px]">(محسوب تلقائياً)</span>
+            </label>
+            <input type="number" formControlName="price" placeholder="0.00" step="0.01" [readonly]="addPriceEntryMode === 'markup'"
+              class="w-full px-[10px] py-[8px] border rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition"
+              [ngClass]="[invalidAdd('price') ? 'border-danger' : 'border-[#e3e6ea]', addPriceEntryMode === 'markup' ? 'bg-[#fafbfc] text-muted' : '']" />
+            <div *ngIf="invalidAdd('price')" class="text-[11px] text-danger mt-[4px]">أدخل سعراً صحيحاً أكبر من صفر</div>
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">تاريخ السريان</label>
+            <input type="date" formControlName="effectiveFrom"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] outline-none focus:border-primary" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              سعر التكلفة <span *ngIf="addPriceEntryMode === 'manual'" class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+              <span *ngIf="addPriceEntryMode === 'markup'" class="text-danger">*</span>
+            </label>
+            <input type="number" formControlName="costPrice" placeholder="0.00" step="0.01" (input)="recomputeMarkupAddPrice()"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              نسبة الهامش % <span *ngIf="addPriceEntryMode === 'manual'" class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input type="number" formControlName="markupPercentage" placeholder="0" step="0.01" (input)="recomputeMarkupAddPrice()"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              نسبة الخصم % <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input type="number" formControlName="discountPercentage" placeholder="0" step="0.01" min="0" max="100"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[14px] font-mono outline-none focus:border-primary transition" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              تاريخ الانتهاء <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input type="date" formControlName="effectiveTo"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] outline-none focus:border-primary" />
+          </div>
+
+          <div class="group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              المورّد <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <app-select
+          formControlName="supplierId"
+          [options]="[{value: '', label: '— بدون —'}].concat(suppliers.map(s => ({value: s.id, label: s.name})))"
+          placeholder="— بدون —"
+          [searchable]="true"
+          />
+          </div>
+
+          <div class="col-span-1 sm:col-span-2 lg:col-span-3 group">
+            <label class="block text-[12px] font-semibold text-[#374151] mb-[5px]">
+              ملاحظات <span class="text-[#b3b9c2] font-normal text-[11px]">(اختياري)</span>
+            </label>
+            <input formControlName="notes" maxlength="255"
+              class="w-full px-[10px] py-[8px] border border-[#e3e6ea] rounded-[9px] text-[13.5px] outline-none focus:border-primary transition" />
+          </div>
+
+        </div>
+
+        <div class="flex gap-[10px]">
+          <app-button variant="primary" type="submit" icon="fa-solid fa-floppy-disk" [disabled]="saving">
+            {{ saving ? 'جارٍ الحفظ…' : 'حفظ السعر الجديد' }}
+          </app-button>
+          <app-button variant="ghost" (click)="cancelAddNew()">إلغاء</app-button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Price history -->
+    <div *ngIf="selectedProduct" class="bg-white border border-line rounded-[13px] p-[26px] shadow-sm">
+      <div class="flex items-center justify-between mb-[16px]">
+        <div class="text-[13.5px] font-bold flex items-center gap-[8px]">
+          <i class="fa-solid fa-clock-rotate-left text-primary"></i> سجل الأسعار
+        </div>
+        <button *ngIf="!addingNew" (click)="openAddNew()"
+          class="flex items-center gap-[6px] px-[12px] py-[7px] rounded-[8px] border border-[#d7f0e3] bg-[#eaf7f1] text-[#0e9f6e] hover:bg-[#d7f0e3] transition text-[12px] font-semibold cursor-pointer">
+          <i class="fa-solid fa-plus text-[10px]"></i> إضافة سعر جديد
+        </button>
+      </div>
+
+      <div *ngIf="historyLoading" class="text-center text-muted py-[20px]">
+        <i class="fa-solid fa-spinner fa-spin text-[20px] block mb-2"></i>
+        جارٍ تحميل السجل…
+      </div>
+
+      <div *ngIf="!historyLoading && !priceHistory.length" class="text-center text-[12.5px] text-[#b3b9c2] py-[20px]">
+        لا يوجد سجل أسعار سابق لهذا الصنف
+      </div>
+
+      <div *ngIf="!historyLoading && priceHistory.length" class="rounded-[9px] overflow-hidden border border-[#e3e6ea]">
+        <div class="overflow-x-auto">
+        <table class="w-full text-[13px] min-w-[560px]">
+          <thead>
+            <tr class="bg-[#fafbfc] text-[11.5px] text-muted border-b border-[#e3e6ea]">
+              <th class="px-[12px] py-[7px] text-right font-semibold">النوع</th>
+              <th class="px-[12px] py-[7px] text-center font-semibold">القيمة</th>
+              <th class="px-[12px] py-[7px] text-right font-semibold">ساري من</th>
+              <th class="px-[12px] py-[7px] text-right font-semibold">ساري حتى</th>
+              <th class="px-[12px] py-[7px] text-right font-semibold">ملاحظات</th>
+              <th class="px-[12px] py-[7px]"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let h of priceHistory" class="border-t border-[#f0f1f4]" [ngClass]="!h.effectiveTo ? 'bg-primary-soft/30' : ''">
+              <td class="px-[12px] py-[8px] font-semibold">{{ h.priceType }}</td>
+              <td class="px-[12px] py-[8px] text-center font-mono font-bold text-primary-text">{{ h.amount | number:'1.2-2' }}</td>
+              <td class="px-[12px] py-[8px] text-muted text-[12px]">{{ h.effectiveFrom | date:'yyyy-MM-dd' }}</td>
+              <td class="px-[12px] py-[8px] text-muted text-[12px]">
+                <span *ngIf="!h.effectiveTo" class="text-[#0e9f6e] font-semibold">ساري حالياً</span>
+                <span *ngIf="h.effectiveTo">{{ h.effectiveTo | date:'yyyy-MM-dd' }}</span>
+              </td>
+              <td class="px-[12px] py-[8px] text-muted text-[12px]">{{ h.notes || '—' }}</td>
+              <td class="px-[12px] py-[8px] text-center">
+                <button *ngIf="!h.effectiveTo" (click)="openUpdate(h)"
+                  class="px-[10px] py-[6px] rounded-[7px] border border-[#e3e6ea] bg-white text-[#5b626d] hover:bg-primary-soft hover:text-primary hover:border-primary-border transition text-[11.5px] cursor-pointer whitespace-nowrap">
+                  <i class="fa-solid fa-pen-to-square text-[10px]"></i> تحديث
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-quick-actions-panel [topButton]="topButton" [actions]="quickActions"></app-quick-actions-panel>
+
+  </div>
+</div>

@@ -1,0 +1,6 @@
+<button [type]="type" [disabled]="disabled"
+  class="inline-flex items-center justify-center gap-2 rounded-[10px] font-bold cursor-pointer transition disabled:opacity-50"
+  [ngClass]="classes">
+  <i *ngIf="icon" [class]="icon"></i>
+  <ng-content></ng-content>
+</button>
